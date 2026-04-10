@@ -44,7 +44,7 @@
 
         .container {
             width: 100%;
-            max-width: 380px; /* Slimmer for all displays */
+            max-width: 380px;
             background: var(--glass);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(0, 243, 255, 0.3);
@@ -64,7 +64,7 @@
 
         .scanner-window {
             width: 100%;
-            aspect-ratio: 1/1; /* Square is better for mobile face matching */
+            aspect-ratio: 1/1;
             border: 1px solid var(--neon-cyan);
             border-radius: 8px;
             position: relative;
@@ -109,10 +109,12 @@
         .vax-badge {
             font-weight: 700; font-size: 0.8rem; padding: 8px;
             text-align: center; border-radius: 4px; margin-bottom: 10px;
+            letter-spacing: 2px;
         }
 
         .pos { color: #00ff88; border: 1px solid #00ff88; background: rgba(0,255,136,0.1); }
         .neg { color: #ff3e3e; border: 1px solid #ff3e3e; background: rgba(255,62,62,0.1); }
+        .warn { color: #ffaa00; border: 1px solid #ffaa00; background: rgba(255,170,0,0.1); }
 
         .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size: 0.75rem; }
         .label { color: var(--neon-cyan); opacity: 0.7; }
@@ -141,7 +143,7 @@
         <div id="vaxBadge" class="vax-badge"></div>
         <div class="info-grid">
             <div class="label">IDENTITY:</div><div class="val" id="petName"></div>
-            <div class="label">CHIP_ID:</div><div class="val" id="chipId"></div>
+            <div class="label" id="idLabel">CHIP_ID:</div><div class="val" id="chipId"></div>
             <div class="label">CONFIDENCE:</div><div class="val" id="matchPct"></div>
         </div>
     </div>
@@ -214,13 +216,13 @@
             } catch (err) { console.error("Skip image"); }
         }
 
-        // 3. Output results
+        // 3. Output results based on match existence
         setTimeout(() => {
             document.getElementById('scanLine').style.display = "none";
-            if (bestMatch && highestScore > 0.5) { // Match threshold
-                showResult(bestMatch, highestScore);
+            if (bestMatch && highestScore > 0.5) { 
+                showVaccinatedMatch(bestMatch, highestScore);
             } else {
-                updateStatus("No Record Found");
+                registerForVaccination();
             }
         }, 1000);
     }
@@ -236,19 +238,37 @@
         return dot / (Math.sqrt(mA) * Math.sqrt(mB));
     }
 
-    function showResult(pet, score) {
+    // SCENARIO 1: MATCH FOUND -> VACCINATED
+    function showVaccinatedMatch(pet, score) {
         document.getElementById('resultPanel').style.display = "block";
-        updateStatus("Match Identified");
+        updateStatus("Match Identified in DB");
 
-        document.getElementById('petName').innerText = pet.PetName || "N/A";
+        document.getElementById('petName').innerText = pet.PetName || "Unknown";
+        document.getElementById('idLabel').innerText = "CHIP_ID:";
         document.getElementById('chipId').innerText = pet.Microchip || "N/A";
         document.getElementById('matchPct').innerText = Math.round(score * 100) + "%";
 
         const badge = document.getElementById('vaxBadge');
-        if (pet.ForVaccinated === "ForVaccinated") {
-            badge.innerText = "For Vaccinated";
-            badge.className = "vax-badge pos";
-        } 
+        badge.innerText = "VACCINATED";
+        badge.className = "vax-badge pos";
+    }
+
+    // SCENARIO 2: NO MATCH -> REGISTER AS 'FOR VACCINATED' WITH NEW PUID
+    function registerForVaccination() {
+        document.getElementById('resultPanel').style.display = "block";
+        updateStatus("Unrecognized Subject");
+
+        // Generate a random 8-character alphanumeric PUID
+        const newPuid = 'PUID-' + Math.random().toString(36).substr(2, 8).toUpperCase();
+
+        document.getElementById('petName').innerText = "NEW REGISTRY";
+        document.getElementById('idLabel').innerText = "NEW PUID:";
+        document.getElementById('chipId').innerText = newPuid;
+        document.getElementById('matchPct').innerText = "NO MATCH";
+
+        const badge = document.getElementById('vaxBadge');
+        badge.innerText = "FOR VACCINATED";
+        badge.className = "vax-badge warn";
     }
 
     init();
