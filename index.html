@@ -3,381 +3,163 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pet Vaccination Checker</title>
+    <title>Pearl Vets | AI Visual Verification</title>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
-    
     <style>
-        :root {
-            --primary: #4CAF50;
-            --secondary: #2196F3;
-            --warning: #ff9800;
-            --dark: #333;
-            --light: #f4f4f9;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--light);
-            color: var(--dark);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-        .container {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            max-width: 400px;
-            width: 100%;
-            text-align: center;
-        }
-        h2 { margin-top: 0; color: var(--dark); }
-        p.instructions {
-            font-size: 13px;
-            color: #666;
-            margin-bottom: 20px;
-        }
-        .upload-area {
-            border: 2px dashed #ccc;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            cursor: pointer;
-            position: relative;
-            background-color: #fafafa;
-            transition: background-color 0.2s;
-        }
-        .upload-area:hover {
-            background-color: #f0f0f0;
-        }
-        .upload-area input {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            opacity: 0; cursor: pointer;
-        }
-        img#preview {
-            max-width: 100%;
-            border-radius: 8px;
-            display: none;
-            margin-top: 10px;
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            margin: 8px 0;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            font-weight: bold;
-            color: white;
-            cursor: pointer;
-            transition: opacity 0.2s;
-        }
-        button:hover { opacity: 0.9; }
-        button:disabled { background: #ccc; cursor: not-allowed; }
+        :root { --brand: #27C3EA; --dark: #1a2a3a; --bg: #f8fafc; }
+        body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--dark); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { background: white; width: 100%; max-width: 480px; padding: 24px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .header { text-align: center; margin-bottom: 24px; }
+        .header h1 { color: var(--brand); margin: 0; font-size: 24px; }
         
-        .btn-search { background-color: var(--secondary); }
-        .btn-vaccinate { background-color: var(--primary); display: none; }
-        .btn-register { background-color: var(--warning); display: none; }
+        .camera-box { width: 100%; height: 280px; background: #eee; border-radius: 15px; overflow: hidden; position: relative; border: 2px solid #e2e8f0; }
+        #preview { width: 100%; height: 100%; object-fit: cover; }
         
-        .status-box {
-            margin-top: 20px;
-            padding: 15px;
-            border-radius: 6px;
-            font-weight: bold;
-            display: none;
-            word-wrap: break-word;
-        }
-        .loading { 
-            font-size: 14px; 
-            color: #666; 
-            margin-top: 10px; 
-            margin-bottom: 10px;
-        }
+        .btn { display: block; width: 100%; padding: 16px; background: var(--brand); color: white; border: none; border-radius: 12px; font-weight: 700; font-size: 16px; cursor: pointer; transition: 0.2s; margin-top: 15px; }
+        .btn:disabled { background: #cbd5e1; cursor: not-allowed; }
+        .btn-secondary { background: var(--dark); }
+
+        #results { margin-top: 20px; padding: 15px; border-radius: 12px; display: none; border: 1px solid #e2e8f0; }
+        .match-badge { background: #def7ec; color: #03543f; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        
+        .loader { width: 20px; height: 20px; border: 3px solid #FFF; border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: rotation 1s linear infinite; margin-right: 10px; }
+        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Vaccination Portal</h2>
-    <p class="instructions">For best results, upload a clear, close-up photo of the dog's face in good lighting.</p>
-    
-    <div class="upload-area">
-        <span id="uploadText">Tap to Upload Dog Photo</span>
-        <input type="file" id="photoInput" accept="image/*">
-        <img id="preview" alt="Dog Preview">
+    <div class="header">
+        <h1>Pearl Vets</h1>
+        <p>Dog Face Verification System</p>
     </div>
 
-    <div id="loader" class="loading">Loading AI Model... Please wait.</div>
+    <div class="camera-box">
+        <video id="webcam" autoplay playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+        <img id="preview" style="display:none;">
+    </div>
 
-    <button id="btnSearch" class="btn-search" disabled>Search Database</button>
-    <button id="btnVaccinate" class="btn-vaccinate">Vaccinate Recognized Pet</button>
-    <button id="btnRegister" class="btn-register">Register as NEW & Vaccinate</button>
+    <button id="scanBtn" class="btn" onclick="identifyDog()">
+        <span id="btnText">Scan Dog Face</span>
+    </button>
 
-    <div id="statusOutput" class="status-box"></div>
+    <div id="results">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3 id="petName" style="margin:0;">Searching...</h3>
+            <span class="match-badge" id="matchScore">0% Match</span>
+        </div>
+        <p id="petDetails" style="font-size:14px; color:#64748b; margin:10px 0;"></p>
+        <div id="vaxStatus" style="font-weight:bold; font-size:14px;"></div>
+    </div>
 </div>
 
 <script>
-    // ==========================================
-    // 1. CONFIGURATION
-    // ==========================================
-    // IMPORTANT: Replace this string with your deployed Google Apps Script Web App URL
-    const APP_URL = "https://script.google.com/macros/s/AKfycbxYi4ruQ9zpJxr5U2ZsXDdg77ybsQoiT3XzB6dfRKILuuADxboZMSQCJrBC7G8y7RFjmA/exec"; 
-    
-    let model = null;
-    let petsData = [];
-    let currentMatch = null;
-    let compressedImageBase64 = null;
+    const SCRIPT_URL = 'YOUR_APPS_SCRIPT_URL'; // Replace with your Web App URL
+    let model;
+    let video = document.getElementById('webcam');
+    let btn = document.getElementById('scanBtn');
 
-    // DOM Elements
-    const preview = document.getElementById('preview');
-    const uploadText = document.getElementById('uploadText');
-    const btnSearch = document.getElementById('btnSearch');
-    const btnVaccinate = document.getElementById('btnVaccinate');
-    const btnRegister = document.getElementById('btnRegister');
-    const statusOutput = document.getElementById('statusOutput');
-    const loader = document.getElementById('loader');
-
-    // ==========================================
-    // 2. INITIALIZATION
-    // ==========================================
+    // Initialize Camera and AI Model
     async function init() {
         try {
-            // Load MobileNet model
-            model = await mobilenet.load({version: 2, alpha: 1.0});
+            updateUI("Loading AI Model...", true);
+            model = await mobilenet.load();
             
-            // Fetch registry data from Google Sheets
-            loader.innerText = "Fetching Registry Data...";
-            const response = await fetch(APP_URL);
-            petsData = await response.json();
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            video.srcObject = stream;
             
-            loader.style.display = 'none';
-        } catch (error) {
-            loader.innerText = "Initialization Error. Check console.";
-            console.error(error);
+            updateUI("Ready to Scan", false);
+        } catch (e) {
+            alert("Camera access required for verification.");
         }
     }
 
-    // ==========================================
-    // 3. IMAGE PROCESSING (Resizing for Google Sheets)
-    // ==========================================
-    function resizeImage(file) {
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const img = new Image();
-                img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    // Max width of 400px to prevent Apps Script memory crashes
-                    const MAX_WIDTH = 400; 
-                    const scaleSize = MAX_WIDTH / img.width;
-                    canvas.width = MAX_WIDTH;
-                    canvas.height = img.height * scaleSize;
-                    
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    
-                    // Compress to JPEG with 0.8 quality
-                    resolve(canvas.toDataURL('image/jpeg', 0.8));
+    async function identifyDog() {
+        updateUI("Scanning Features...", true);
+        
+        try {
+            // 1. Get embedding (fingerprint) of the current dog
+            const activation = await model.infer(video, true);
+            
+            // 2. Fetch Registry Data from your Spreadsheet
+            const response = await fetch(SCRIPT_URL);
+            const registry = await response.json();
+            
+            let bestMatch = null;
+            let highestSimilarity = 0;
+
+            // 3. Compare with every pet in the registry
+            // This happens on the device for privacy and speed
+            for (let pet of registry) {
+                if (!pet.PetPhoto) continue;
+
+                // Create a temporary image to analyze the registry photo
+                const sim = await comparePhotos(video, pet.PetPhoto);
+                
+                if (sim > highestSimilarity) {
+                    highestSimilarity = sim;
+                    bestMatch = pet;
                 }
-                img.src = e.target.result;
             }
-            reader.readAsDataURL(file);
+
+            displayResult(bestMatch, highestSimilarity);
+        } catch (e) {
+            console.error(e);
+            updateUI("Scan Failed", false);
+        }
+    }
+
+    async function comparePhotos(liveVideo, registryUrl) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.src = registryUrl;
+            img.onload = async () => {
+                const liveFeatures = await model.infer(liveVideo, true);
+                const registryFeatures = await model.infer(img, true);
+                
+                // Calculate Cosine Similarity
+                const dist = tf.losses.cosineDistance(liveFeatures, registryFeatures).dataSync();
+                // Convert distance to percentage (lower distance = higher similarity)
+                resolve(1 - dist[0]); 
+            };
+            img.onerror = () => resolve(0);
         });
     }
 
-    // Handle File Upload
-    document.getElementById('photoInput').addEventListener('change', async function(e) {
-        const file = e.target.files[0];
-        if (file) {
-            loader.style.display = 'block';
-            loader.innerText = "Processing image...";
-            
-            // Resize and compress the image
-            compressedImageBase64 = await resizeImage(file);
-            
-            // Update UI
-            preview.src = compressedImageBase64;
-            preview.style.display = 'block';
-            uploadText.style.display = 'none';
-            
-            // Reset buttons and status
-            btnSearch.disabled = false;
-            btnSearch.style.display = 'block';
-            btnVaccinate.style.display = 'none';
-            btnRegister.style.display = 'none';
-            statusOutput.style.display = 'none';
-            loader.style.display = 'none';
-        }
-    });
-
-    // Helper to display status messages
-    function showStatus(message, type) {
-        statusOutput.style.display = 'block';
-        if(type === 'success') {
-            statusOutput.style.backgroundColor = '#e8f5e9';
-            statusOutput.style.color = '#2e7d32';
-        } else if (type === 'warning') {
-            statusOutput.style.backgroundColor = '#fff3e0';
-            statusOutput.style.color = '#e65100';
-        } else {
-            statusOutput.style.backgroundColor = '#ffebee';
-            statusOutput.style.color = '#c62828';
-        }
-        statusOutput.innerText = message;
-    }
-
-    // ==========================================
-    // 4. AI COMPARISON LOGIC
-    // ==========================================
-    function cosineSimilarity(tensorA, tensorB) {
-        const a = tensorA.dataSync();
-        const b = tensorB.dataSync();
-        let dotProduct = 0, normA = 0, normB = 0;
-        for (let i = 0; i < a.length; i++) {
-            dotProduct += a[i] * b[i];
-            normA += a[i] * a[i];
-            normB += b[i] * b[i];
-        }
-        return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
-    }
-
-    async function findMatchingDog() {
-        loader.style.display = 'block';
-        loader.innerText = "Analyzing image similarity...";
+    function displayResult(pet, score) {
+        const resultsDiv = document.getElementById('results');
+        const scorePct = Math.round(score * 100);
         
-        try {
-            // Extract features from the uploaded image
-            const uploadedFeatures = model.infer(preview, true);
-            let bestMatch = null;
-            let highestScore = -1;
+        resultsDiv.style.display = 'block';
+        updateUI("Scan Again", false);
 
-            // Loop through the database to find a match
-            for (let pet of petsData) {
-                if (!pet.PetPhoto) continue;
-                
-                try {
-                    const tempImg = new Image();
-                    tempImg.crossOrigin = "Anonymous";
-                    await new Promise((resolve, reject) => {
-                        tempImg.onload = resolve;
-                        tempImg.onerror = reject;
-                        tempImg.src = pet.PetPhoto;
-                    });
-                    
-                    const dbFeatures = model.infer(tempImg, true);
-                    const similarity = cosineSimilarity(uploadedFeatures, dbFeatures);
-                    
-                    if (similarity > highestScore) {
-                        highestScore = similarity;
-                        bestMatch = pet;
-                    }
-                } catch (imgErr) {
-                    console.warn("Could not process image for pet:", pet.PUID, imgErr);
-                }
-            }
+        if (score > 0.75) { // Threshold for a "match"
+            document.getElementById('petName').innerText = pet.PetName;
+            document.getElementById('matchScore').innerText = scorePct + "% Match";
+            document.getElementById('petDetails').innerText = `Owner: ${pet.OwnerFirstName} | Microchip: ${pet.Microchip}`;
             
-            loader.style.display = 'none';
-            
-            // Threshold is set to 0.70. Adjust this based on real-world testing.
-            if (highestScore > 0.70 && bestMatch) {
-                return bestMatch;
-            } else {
-                return null;
-            }
-        } catch (e) {
-            loader.style.display = 'none';
-            console.error("Analysis error:", e);
-            return null;
+            // Verification check based on Column N (ForVaccinated)
+            const isVax = (pet.ForVaccinated && pet.ForVaccinated !== "");
+            document.getElementById('vaxStatus').innerHTML = isVax 
+                ? "<span style='color:#16a34a;'>✅ VACCINATION VERIFIED</span>" 
+                : "<span style='color:#dc2626;'>❌ NO VACCINATION RECORD</span>";
+        } else {
+            document.getElementById('petName').innerText = "No Match Found";
+            document.getElementById('petDetails').innerText = "This pet is not in our verified registry.";
+            document.getElementById('matchScore').innerText = "N/A";
+            document.getElementById('vaxStatus').innerText = "";
         }
     }
 
-    // ==========================================
-    // 5. BUTTON ACTIONS
-    // ==========================================
-    
-    // Search Button
-    btnSearch.addEventListener('click', async () => {
-        currentMatch = await findMatchingDog();
-        btnSearch.style.display = 'none';
+    function updateUI(text, loading) {
+        const btnText = document.getElementById('btnText');
+        btnText.innerHTML = loading ? `<span class="loader"></span> ${text}` : text;
+        btn.disabled = loading;
+    }
 
-        if (currentMatch) {
-            btnVaccinate.style.display = 'block';
-            const isVaccinated = currentMatch.ForVaccinated === "ForVaccinated";
-            showStatus(`Match Found: ${currentMatch.PUID}. Status: ${isVaccinated ? 'VACCINATED ✅' : 'NOT VACCINATED ❌'}`, isVaccinated ? 'success' : 'error');
-        } else {
-            btnRegister.style.display = 'block';
-            showStatus("No matching dog found. Would you like to register this as a new dog?", "warning");
-        }
-    });
-
-    // Vaccinate Existing Dog Button
-    btnVaccinate.addEventListener('click', async () => {
-        if (currentMatch.ForVaccinated === "ForVaccinated") {
-            showStatus(`${currentMatch.PUID} is already vaccinated!`, 'success');
-            return;
-        }
-        
-        loader.style.display = 'block';
-        loader.innerText = `Updating vaccination...`;
-
-        const formData = new URLSearchParams();
-        formData.append('action', 'vaccinate_pet');
-        formData.append('PUID', currentMatch.PUID);
-
-        try {
-            await fetch(APP_URL, { 
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: formData 
-            });
-            loader.style.display = 'none';
-            showStatus(`${currentMatch.PUID} marked as Vaccinated!`, 'success');
-            init(); // Refresh data to reflect the change
-        } catch (e) {
-            loader.style.display = 'none';
-            showStatus("Failed to update Google Sheet.", 'error');
-        }
-    });
-
-    // Register New Dog Button
-    btnRegister.addEventListener('click', async () => {
-        loader.style.display = 'block';
-        loader.innerText = `Registering and uploading photo...`;
-
-        // Generate a new unique PUID based on timestamp
-        const newPUID = "DOG-" + Date.now().toString().slice(-6);
-
-        const formData = new URLSearchParams();
-        formData.append('action', 'register_new');
-        formData.append('PUID', newPUID);
-        formData.append('PhotoData', compressedImageBase64);
-        formData.append('ForVaccinated', 'ForVaccinated');
-
-        try {
-            await fetch(APP_URL, { 
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: formData 
-            });
-            
-            loader.style.display = 'none';
-            showStatus(`New Dog Registered & Vaccinated! (ID: ${newPUID})`, 'success');
-            btnRegister.style.display = 'none';
-            init(); // Refresh data to include the new dog
-        } catch (e) {
-            loader.style.display = 'none';
-            showStatus("Failed to register new dog in Google Sheet.", 'error');
-        }
-    });
-
-    // Start initialization on window load
-    window.onload = init;
+    init();
 </script>
 </body>
 </html>
