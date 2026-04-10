@@ -246,12 +246,9 @@
 
         const badge = document.getElementById('vaxBadge');
         if (pet.ForVaccinated === "ForVaccinated") {
-            badge.innerText = "VERIFIED VACCINATED";
+            badge.innerText = "For Vaccinated";
             badge.className = "vax-badge pos";
-        } else {
-            badge.innerText = "VACCINATION REQUIRED";
-            badge.className = "vax-badge neg";
-        }
+        } 
     }
 
     init();
