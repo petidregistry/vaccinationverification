@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pet Vaccination Checker</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+    
+    <style>
+        :root {
+            --primary: #4CAF50;
+            --secondary: #2196F3;
+            --dark: #333;
+            --light: #f4f4f9;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--light);
+            color: var(--dark);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+        h2 { margin-top: 0; color: var(--dark); }
+        .upload-area {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            cursor: pointer;
+            position: relative;
+        }
+        .upload-area input {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            opacity: 0; cursor: pointer;
+        }
+        img#preview {
+            max-width: 100%;
+            border-radius: 8px;
+            display: none;
+            margin-top: 10px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        button:hover { opacity: 0.9; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-search { background-color: var(--secondary); }
+        .btn-vaccinate { background-color: var(--primary); }
+        .status-box {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            font-weight: bold;
+            display: none;
+        }
+        .loading { font-size: 14px; color: #666; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Vaccination Portal</h2>
+    
+    <div class="upload-area">
+        <span id="uploadText">Tap to Upload Dog Photo</span>
+        <input type="file" id="photoInput" accept="image/*">
+        <img id="preview" alt="Dog Preview">
+    </div>
+
+    <div id="loader" class="loading">Loading AI Model... Please wait.</div>
+
+    <button id="btnSearch" class="btn-search" disabled>Search Vaccination Status</button>
+    <button id="btnVaccinate" class="btn-vaccinate" disabled>Vaccinate Pet</button>
+
+    <div id="statusOutput" class="status-box"></div>
+</div>
+
+<script>
+    // --- CONFIGURATION ---
+    const APP_URL = "YOUR_WEB_APP_URL_HERE"; // Replace with your Google Apps Script URL
+    let model = null;
+    let petsData = [];
+    const preview = document.getElementById('preview');
+    const uploadText = document.getElementById('uploadText');
+    const btnSearch = document.getElementById('btnSearch');
+    const btnVaccinate = document.getElementById('btnVaccinate');
+    const statusOutput = document.getElementById('statusOutput');
+    const loader = document.getElementById('loader');
+
+    // --- INITIALIZATION ---
+    async function init() {
+        try {
+            // Load MobileNet for feature extraction
+            model = await mobilenet.load({version: 2, alpha: 1.0});
+            loader.innerText = "Fetching Registry Data...";
+            
+            // Fetch registry data from Google Sheets
+            const response = await fetch(APP_URL);
+            petsData = await response.json();
+            
+            loader.style.display = 'none';
+            checkReadyState();
+        } catch (error) {
+            loader.innerText = "Initialization Error. Check console.";
+            console.error(error);
+        }
+    }
+
+    // --- UI HANDLERS ---
+    document.getElementById('photoInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                preview.src = event.target.result;
+                preview.style.display = 'block';
+                uploadText.style.display = 'none';
+                checkReadyState();
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    function checkReadyState() {
+        if (model && petsData.length > 0 && preview.src) {
+            btnSearch.disabled = false;
+            btnVaccinate.disabled = false;
+        }
+    }
+
+    function showStatus(message, isSuccess) {
+        statusOutput.style.display = 'block';
+        statusOutput.style.backgroundColor = isSuccess ? '#e8f5e9' : '#ffebee';
+        statusOutput.style.color = isSuccess ? '#2e7d32' : '#c62828';
+        statusOutput.innerText = message;
+    }
+
+    // --- AI COMPARISON LOGIC ---
+    // Calculates cosine similarity between two tensors
+    function cosineSimilarity(tensorA, tensorB) {
+        const a = tensorA.dataSync();
+        const b = tensorB.dataSync();
+        let dotProduct = 0, normA = 0, normB = 0;
+        for (let i = 0; i < a.length; i++) {
+            dotProduct += a[i] * b[i];
+            normA += a[i] * a[i];
+            normB += b[i] * b[i];
+        }
+        return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+    }
+
+    // Extracts features using MobileNet and finds the best match
+    async function findMatchingDog() {
+        loader.style.display = 'block';
+        loader.innerText = "Analyzing image similarity...";
+        
+        try {
+            const uploadedFeatures = model.infer(preview, true); // Extract embeddings
+            let bestMatch = null;
+            let highestScore = -1;
+
+            for (let pet of petsData) {
+                if (!pet.PetPhoto) continue;
+
+                try {
+                    // Create temporary image object to analyze
+                    const tempImg = new Image();
+                    tempImg.crossOrigin = "Anonymous"; // Required for Canvas processing
+                    
+                    // Promisify image loading
+                    await new Promise((resolve, reject) => {
+                        tempImg.onload = resolve;
+                        tempImg.onerror = reject;
+                        tempImg.src = pet.PetPhoto;
+                    });
+
+                    const dbFeatures = model.infer(tempImg, true);
+                    const similarity = cosineSimilarity(uploadedFeatures, dbFeatures);
+                    
+                    if (similarity > highestScore) {
+                        highestScore = similarity;
+                        bestMatch = pet;
+                    }
+                } catch (imgErr) {
+                    console.warn("Could not process image for pet:", pet.PetName, imgErr);
+                    // Often caused by Google Drive CORS restrictions
+                }
+            }
+
+            loader.style.display = 'none';
+            // A score closer to 1.0 is a perfect match. Threshold depends on dog variation.
+            if (highestScore > 0.75 && bestMatch) {
+                return bestMatch;
+            } else {
+                return null;
+            }
+        } catch (e) {
+            loader.style.display = 'none';
+            console.error(e);
+            return null;
+        }
+    }
+
+    // --- BUTTON ACTIONS ---
+    btnSearch.addEventListener('click', async () => {
+        const match = await findMatchingDog();
+        if (match) {
+            const isVaccinated = match.ForVaccinated === "ForVaccinated";
+            if (isVaccinated) {
+                showStatus(`Match Found: ${match.PetName}. Status: VACCINATED ✅`, true);
+            } else {
+                showStatus(`Match Found: ${match.PetName}. Status: NOT VACCINATED ❌`, false);
+            }
+        } else {
+            showStatus("No matching dog found in the database.", false);
+        }
+    });
+
+    btnVaccinate.addEventListener('click', async () => {
+        const match = await findMatchingDog();
+        if (!match) {
+            showStatus("Cannot vaccinate. Dog not recognized in the database.", false);
+            return;
+        }
+        
+        if (match.ForVaccinated === "ForVaccinated") {
+            showStatus(`${match.PetName} is already vaccinated!`, true);
+            return;
+        }
+
+        loader.style.display = 'block';
+        loader.innerText = `Updating vaccination for ${match.PetName}...`;
+
+        // Send post request to Apps Script
+        const formData = new URLSearchParams();
+        formData.append('action', 'vaccinate_pet');
+        formData.append('Microchip', match.Microchip);
+
+        try {
+            const response = await fetch(APP_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData
+            });
+            const resultText = await response.text();
+            
+            loader.style.display = 'none';
+            showStatus(`${match.PetName} has been successfully marked as Vaccinated!`, true);
+            
+            // Refresh local data to reflect changes
+            init(); 
+        } catch (e) {
+            loader.style.display = 'none';
+            showStatus("Failed to update Google Sheet.", false);
+        }
+    });
+
+    // Start
+    window.onload = init;
+</script>
+
+</body>
+</html>
