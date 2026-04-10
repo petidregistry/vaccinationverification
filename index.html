@@ -3,163 +3,173 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pearl Vets | AI Visual Verification</title>
+    <title>Pearl Vets | Vaccination Portal</title>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
     <style>
-        :root { --brand: #27C3EA; --dark: #1a2a3a; --bg: #f8fafc; }
-        body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--dark); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .container { background: white; width: 100%; max-width: 480px; padding: 24px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
-        .header { text-align: center; margin-bottom: 24px; }
-        .header h1 { color: var(--brand); margin: 0; font-size: 24px; }
+        :root { --pearl: #27C3EA; --dark: #1e293b; --success: #22c55e; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f8fafc; color: var(--dark); display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .card { background: white; width: 100%; max-width: 450px; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        .header { text-align: center; margin-bottom: 25px; }
+        .header h1 { color: var(--pearl); margin: 0; font-size: 28px; }
         
-        .camera-box { width: 100%; height: 280px; background: #eee; border-radius: 15px; overflow: hidden; position: relative; border: 2px solid #e2e8f0; }
-        #preview { width: 100%; height: 100%; object-fit: cover; }
-        
-        .btn { display: block; width: 100%; padding: 16px; background: var(--brand); color: white; border: none; border-radius: 12px; font-weight: 700; font-size: 16px; cursor: pointer; transition: 0.2s; margin-top: 15px; }
-        .btn:disabled { background: #cbd5e1; cursor: not-allowed; }
-        .btn-secondary { background: var(--dark); }
+        .action-area { display: flex; flex-direction: column; gap: 12px; }
+        .btn { padding: 15px; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.3s; color: white; }
+        .btn-vax { background: var(--pearl); }
+        .btn-verify { background: var(--dark); }
+        .btn:disabled { background: #cbd5e1; cursor: wait; }
 
-        #results { margin-top: 20px; padding: 15px; border-radius: 12px; display: none; border: 1px solid #e2e8f0; }
-        .match-badge { background: #def7ec; color: #03543f; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        #camera-container { width: 100%; height: 300px; background: #000; border-radius: 15px; margin-top: 15px; overflow: hidden; display: none; position: relative; }
+        video { width: 100%; height: 100%; object-fit: cover; }
         
-        .loader { width: 20px; height: 20px; border: 3px solid #FFF; border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: rotation 1s linear infinite; margin-right: 10px; }
-        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #status { margin-top: 20px; padding: 15px; border-radius: 10px; display: none; text-align: center; font-weight: 500; }
+        .match-card { border: 2px solid var(--success); padding: 15px; border-radius: 12px; margin-top: 15px; background: #f0fdf4; }
     </style>
 </head>
 <body>
 
-<div class="container">
+<div class="card">
     <div class="header">
         <h1>Pearl Vets</h1>
-        <p>Dog Face Verification System</p>
+        <p>Biometric Vaccination Registry</p>
     </div>
 
-    <div class="camera-box">
-        <video id="webcam" autoplay playsinline style="width:100%; height:100%; object-fit:cover;"></video>
-        <img id="preview" style="display:none;">
-    </div>
-
-    <button id="scanBtn" class="btn" onclick="identifyDog()">
-        <span id="btnText">Scan Dog Face</span>
-    </button>
-
-    <div id="results">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h3 id="petName" style="margin:0;">Searching...</h3>
-            <span class="match-badge" id="matchScore">0% Match</span>
+    <div class="action-area">
+        <div style="border: 1px solid #e2e8f0; padding: 15px; border-radius: 12px;">
+            <label style="font-size: 12px; font-weight: bold;">Step 1: Mark Record</label>
+            <input type="text" id="vaxPUID" placeholder="Enter Microchip/PUID" style="width:100%; padding:10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box;">
+            <button class="btn btn-vax" id="vaxBtn" onclick="markAsVaccinated()" style="width:100%;">Vaccinate Pet</button>
         </div>
-        <p id="petDetails" style="font-size:14px; color:#64748b; margin:10px 0;"></p>
-        <div id="vaxStatus" style="font-weight:bold; font-size:14px;"></div>
+
+        <button class="btn btn-verify" id="verifyBtn" onclick="startVerification()">Verify Vaccination (Face Scan)</button>
     </div>
+
+    <div id="camera-container">
+        <video id="webcam" autoplay playsinline></video>
+        <div style="position: absolute; bottom: 10px; width: 100%; text-align: center;">
+            <button class="btn btn-vax" onclick="captureAndMatch()" style="padding: 10px 20px; font-size: 14px;">Scan Face</button>
+        </div>
+    </div>
+
+    <div id="status"></div>
+    <div id="result-display"></div>
 </div>
 
 <script>
     const SCRIPT_URL = 'YOUR_APPS_SCRIPT_URL'; // Replace with your Web App URL
     let model;
     let video = document.getElementById('webcam');
-    let btn = document.getElementById('scanBtn');
 
-    // Initialize Camera and AI Model
-    async function init() {
+    // Load AI on startup
+    async function initAI() {
+        showStatus("Initializing AI...", "info");
+        model = await mobilenet.load();
+        showStatus("AI Ready", "success", 2000);
+    }
+
+    // --- ACTION: VACCINATE ---
+    async function markAsVaccinated() {
+        const puid = document.getElementById('vaxPUID').value;
+        if (!puid) return alert("Please enter a Microchip/PUID");
+
+        showStatus("Updating Registry...", "info");
         try {
-            updateUI("Loading AI Model...", true);
-            model = await mobilenet.load();
-            
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            video.srcObject = stream;
-            
-            updateUI("Ready to Scan", false);
+            const resp = await fetch(`${SCRIPT_URL}?action=vaccinate_pet&Microchip=${puid}`, { method: 'POST' });
+            const result = await resp.text();
+            showStatus(`Success: ${result}`, "success");
         } catch (e) {
-            alert("Camera access required for verification.");
+            showStatus("Update Failed", "error");
         }
     }
 
-    async function identifyDog() {
-        updateUI("Scanning Features...", true);
+    // --- ACTION: VERIFY (Visual Match) ---
+    async function startVerification() {
+        document.getElementById('camera-container').style.display = 'block';
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        video.srcObject = stream;
+        showStatus("Center the dog's face in the camera", "info");
+    }
+
+    async function captureAndMatch() {
+        showStatus("Analyzing visual features...", "info");
         
         try {
-            // 1. Get embedding (fingerprint) of the current dog
-            const activation = await model.infer(video, true);
+            // 1. Get visual fingerprint of the dog in camera
+            const liveFeatures = await model.infer(video, true);
             
-            // 2. Fetch Registry Data from your Spreadsheet
-            const response = await fetch(SCRIPT_URL);
-            const registry = await response.json();
-            
+            // 2. Fetch Registry
+            const resp = await fetch(SCRIPT_URL);
+            const data = await resp.json();
+
+            // 3. Filter for pets marked as "ForVaccinated" in Column N
+            const vaccinatedPets = data.filter(p => p.ForVaccinated === "ForVaccinated" && p.PetPhoto);
+
             let bestMatch = null;
-            let highestSimilarity = 0;
+            let maxSimilarity = 0;
 
-            // 3. Compare with every pet in the registry
-            // This happens on the device for privacy and speed
-            for (let pet of registry) {
-                if (!pet.PetPhoto) continue;
-
-                // Create a temporary image to analyze the registry photo
-                const sim = await comparePhotos(video, pet.PetPhoto);
-                
-                if (sim > highestSimilarity) {
-                    highestSimilarity = sim;
+            for (let pet of vaccinatedPets) {
+                const sim = await compareToRegistry(pet.PetPhoto, liveFeatures);
+                if (sim > maxSimilarity) {
+                    maxSimilarity = sim;
                     bestMatch = pet;
                 }
             }
 
-            displayResult(bestMatch, highestSimilarity);
+            displayResult(bestMatch, maxSimilarity);
         } catch (e) {
-            console.error(e);
-            updateUI("Scan Failed", false);
+            showStatus("Verification Error", "error");
         }
     }
 
-    async function comparePhotos(liveVideo, registryUrl) {
+    // Helper: Compare live camera to a stored photo URL
+    async function compareToRegistry(url, liveFeatures) {
         return new Promise((resolve) => {
             const img = new Image();
             img.crossOrigin = "anonymous";
-            img.src = registryUrl;
+            img.src = url;
             img.onload = async () => {
-                const liveFeatures = await model.infer(liveVideo, true);
                 const registryFeatures = await model.infer(img, true);
-                
-                // Calculate Cosine Similarity
-                const dist = tf.losses.cosineDistance(liveFeatures, registryFeatures).dataSync();
-                // Convert distance to percentage (lower distance = higher similarity)
-                resolve(1 - dist[0]); 
+                const distance = tf.losses.cosineDistance(liveFeatures, registryFeatures).dataSync();
+                resolve(1 - distance[0]); // Convert distance to similarity
             };
             img.onerror = () => resolve(0);
         });
     }
 
     function displayResult(pet, score) {
-        const resultsDiv = document.getElementById('results');
+        const display = document.getElementById('result-display');
         const scorePct = Math.round(score * 100);
         
-        resultsDiv.style.display = 'block';
-        updateUI("Scan Again", false);
-
-        if (score > 0.75) { // Threshold for a "match"
-            document.getElementById('petName').innerText = pet.PetName;
-            document.getElementById('matchScore').innerText = scorePct + "% Match";
-            document.getElementById('petDetails').innerText = `Owner: ${pet.OwnerFirstName} | Microchip: ${pet.Microchip}`;
-            
-            // Verification check based on Column N (ForVaccinated)
-            const isVax = (pet.ForVaccinated && pet.ForVaccinated !== "");
-            document.getElementById('vaxStatus').innerHTML = isVax 
-                ? "<span style='color:#16a34a;'>✅ VACCINATION VERIFIED</span>" 
-                : "<span style='color:#dc2626;'>❌ NO VACCINATION RECORD</span>";
+        if (score > 0.70) { // Matching threshold
+            display.innerHTML = `
+                <div class="match-card">
+                    <h3 style="margin:0; color:var(--success)">✅ VACCINATED</h3>
+                    <p><strong>Pet:</strong> ${pet.PetName} (${scorePct}% match)</p>
+                    <p><strong>Owner:</strong> ${pet.OwnerFirstName} ${pet.OwnerSecondName}</p>
+                    <p><strong>ID:</strong> ${pet.Microchip}</p>
+                </div>`;
+            showStatus("Match Found!", "success");
         } else {
-            document.getElementById('petName').innerText = "No Match Found";
-            document.getElementById('petDetails').innerText = "This pet is not in our verified registry.";
-            document.getElementById('matchScore').innerText = "N/A";
-            document.getElementById('vaxStatus').innerText = "";
+            display.innerHTML = `<div class="match-card" style="border-color:#ef4444; background:#fef2f2;">
+                <h3 style="margin:0; color:#ef4444">❌ NOT VERIFIED</h3>
+                <p>No matching vaccinated pet found in our records.</p>
+            </div>`;
+            showStatus("No Match", "error");
         }
+        // Stop Camera
+        video.srcObject.getTracks().forEach(track => track.stop());
+        document.getElementById('camera-container').style.display = 'none';
     }
 
-    function updateUI(text, loading) {
-        const btnText = document.getElementById('btnText');
-        btnText.innerHTML = loading ? `<span class="loader"></span> ${text}` : text;
-        btn.disabled = loading;
+    function showStatus(msg, type, timeout = 0) {
+        const s = document.getElementById('status');
+        s.style.display = 'block';
+        s.innerText = msg;
+        s.style.color = type === 'error' ? '#ef4444' : type === 'success' ? '#22c55e' : '#3b82f6';
+        if (timeout > 0) setTimeout(() => s.style.display = 'none', timeout);
     }
 
-    init();
+    initAI();
 </script>
 </body>
 </html>
