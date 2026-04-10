@@ -12,15 +12,22 @@
 
     <style>
         :root {
-            --bg-color: #050a0f;
+            --bg-color: #03060a;
             --primary-color: #00ffcc;
+            --primary-glow: rgba(0, 255, 204, 0.5);
             --alert-color: #ff3366;
-            --panel-bg: rgba(0, 255, 204, 0.05);
+            --alert-glow: rgba(255, 51, 102, 0.5);
+            --panel-bg: rgba(0, 255, 204, 0.03);
+            --grid-line: rgba(0, 255, 204, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
             margin: 0;
-            padding: 0;
+            padding: 20px;
             background-color: var(--bg-color);
             color: var(--primary-color);
             font-family: 'Share Tech Mono', monospace;
@@ -30,34 +37,55 @@
             justify-content: center;
             min-height: 100vh;
             overflow-x: hidden;
-        }
-
-        /* Sci-Fi Grid Background */
-        body::before {
-            content: "";
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: 
-                linear-gradient(rgba(0, 255, 204, 0.1) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 255, 204, 0.1) 1px, transparent 1px);
-            background-size: 30px 30px;
-            z-index: -1;
-            opacity: 0.3;
-        }
-
-        .hud-container {
-            border: 2px solid var(--primary-color);
-            background: var(--panel-bg);
-            padding: 20px;
-            width: 90%;
-            max-width: 600px;
-            box-shadow: 0 0 20px rgba(0, 255, 204, 0.2), inset 0 0 20px rgba(0, 255, 204, 0.1);
             position: relative;
         }
 
-        /* HUD Corners */
+        /* Sci-Fi Grid Background with Vignette */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: 
+                linear-gradient(var(--grid-line) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: -2;
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: radial-gradient(circle at center, transparent 30%, var(--bg-color) 100%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .hud-container {
+            border: 1px solid var(--primary-glow);
+            background: var(--panel-bg);
+            backdrop-filter: blur(4px);
+            padding: clamp(15px, 4vw, 30px);
+            width: 100%;
+            max-width: 700px;
+            box-shadow: 0 0 30px rgba(0, 255, 204, 0.1), inset 0 0 20px rgba(0, 255, 204, 0.05);
+            position: relative;
+            animation: hudBreathing 4s infinite alternate ease-in-out;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        @keyframes hudBreathing {
+            0% { box-shadow: 0 0 20px rgba(0, 255, 204, 0.05), inset 0 0 10px rgba(0, 255, 204, 0.05); }
+            100% { box-shadow: 0 0 40px rgba(0, 255, 204, 0.15), inset 0 0 25px rgba(0, 255, 204, 0.1); }
+        }
+
+        /* Advanced HUD Corners */
         .hud-container::before, .hud-container::after {
-            content: ''; position: absolute; width: 20px; height: 20px; border: 3px solid var(--primary-color);
+            content: ''; position: absolute; width: 30px; height: 30px; 
+            border: 2px solid var(--primary-color);
+            pointer-events: none;
         }
         .hud-container::before { top: -2px; left: -2px; border-right: none; border-bottom: none; }
         .hud-container::after { bottom: -2px; right: -2px; border-left: none; border-top: none; }
@@ -65,74 +93,106 @@
         h1 {
             text-align: center;
             text-transform: uppercase;
-            letter-spacing: 4px;
-            margin-top: 0;
-            border-bottom: 1px solid var(--primary-color);
-            padding-bottom: 10px;
+            letter-spacing: clamp(2px, 1vw, 6px);
+            margin: 0;
+            font-size: clamp(1.2rem, 5vw, 2rem);
+            border-bottom: 1px solid var(--primary-glow);
+            padding-bottom: 15px;
+            text-shadow: 0 0 10px var(--primary-glow);
         }
 
         .scanner-window {
             width: 100%;
-            height: 350px;
-            border: 1px dashed var(--primary-color);
-            margin: 20px 0;
+            aspect-ratio: 4/3; /* Keeps shape nice on all screens */
+            max-height: 50vh;
+            border: 1px dashed var(--primary-glow);
             position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #000;
+            background: rgba(0, 0, 0, 0.6);
             overflow: hidden;
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8);
+        }
+
+        #standby-text {
+            font-size: clamp(0.9rem, 3vw, 1.2rem);
+            opacity: 0.8;
+            animation: pulseText 1.5s infinite alternate;
+            text-align: center;
+            padding: 20px;
+        }
+
+        @keyframes pulseText {
+            0% { opacity: 0.3; text-shadow: none; }
+            100% { opacity: 1; text-shadow: 0 0 8px var(--primary-color); }
         }
 
         #preview-img {
-            max-width: 100%;
-            max-height: 100%;
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Prevents stretching */
             display: none;
             z-index: 1;
         }
 
+        /* Improved 3D Scan Line */
         .scan-line {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            height: 5px;
-            background: var(--primary-color);
-            box-shadow: 0 0 15px var(--primary-color);
-            opacity: 0.7;
+            height: 15%;
+            background: linear-gradient(to bottom, transparent, var(--primary-glow), var(--primary-color));
+            opacity: 0.6;
             z-index: 2;
             display: none;
-            animation: scanAnim 2s linear infinite;
+            animation: scanAnim 2s ease-in-out infinite alternate;
         }
 
         @keyframes scanAnim {
-            0% { top: 0; }
-            50% { top: 100%; }
-            100% { top: 0; }
+            0% { top: -15%; }
+            100% { top: 100%; }
         }
 
         .controls {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap; /* Allows stacking on tiny screens */
         }
 
         button, .file-upload-label {
-            background: transparent;
+            flex: 1 1 200px; /* Fluid sizing */
+            text-align: center;
+            background: rgba(0, 255, 204, 0.05);
             color: var(--primary-color);
-            border: 1px solid var(--primary-color);
-            padding: 10px 20px;
+            border: 1px solid var(--primary-glow);
+            padding: 15px 20px;
             cursor: pointer;
             font-family: inherit;
             text-transform: uppercase;
-            font-size: 16px;
-            transition: all 0.3s;
+            font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+            transition: all 0.2s ease-out;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
         }
 
-        button:hover, .file-upload-label:hover {
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            border-color: rgba(0, 255, 204, 0.2);
+        }
+
+        button:not(:disabled):hover, .file-upload-label:hover {
             background: var(--primary-color);
-            color: #000;
-            box-shadow: 0 0 15px var(--primary-color);
+            color: var(--bg-color);
+            box-shadow: 0 0 20px var(--primary-glow);
+            font-weight: bold;
+        }
+
+        button:not(:disabled):active, .file-upload-label:active {
+            transform: scale(0.98);
         }
 
         input[type="file"] {
@@ -140,24 +200,59 @@
         }
 
         .status-panel {
-            margin-top: 20px;
             padding: 15px;
-            border: 1px solid rgba(0, 255, 204, 0.3);
-            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--primary-glow);
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
 
-        .log-entry { margin: 5px 0; font-size: 14px; }
+        #system-logs {
+            height: 120px;
+            overflow-y: auto;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            padding-right: 10px;
+        }
+
+        /* Custom Sci-Fi Scrollbar */
+        #system-logs::-webkit-scrollbar { width: 5px; }
+        #system-logs::-webkit-scrollbar-track { background: rgba(0,0,0,0.5); }
+        #system-logs::-webkit-scrollbar-thumb { background: var(--primary-glow); }
+
+        .log-entry { margin: 2px 0; opacity: 0.9; }
+        .log-entry:last-child { opacity: 1; text-shadow: 0 0 5px var(--primary-color); }
         
         .match-result {
-            margin-top: 15px;
-            font-size: 24px;
+            font-size: clamp(1.2rem, 4vw, 1.5rem);
             font-weight: bold;
             text-align: center;
             text-shadow: 0 0 10px currentColor;
+            letter-spacing: 2px;
+            animation: fadeIn 0.5s ease-out;
         }
 
-        .vaccinated { color: var(--primary-color); border: 2px solid var(--primary-color); padding: 10px; background: rgba(0, 255, 204, 0.1); }
-        .unidentified { color: var(--alert-color); border: 2px solid var(--alert-color); padding: 10px; background: rgba(255, 51, 102, 0.1); }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .vaccinated { 
+            color: var(--primary-color); 
+            border: 1px solid var(--primary-color); 
+            padding: 15px; 
+            background: rgba(0, 255, 204, 0.1); 
+            box-shadow: inset 0 0 15px rgba(0, 255, 204, 0.2);
+        }
+        
+        .unidentified { 
+            color: var(--alert-color); 
+            border: 1px solid var(--alert-color); 
+            padding: 15px; 
+            background: rgba(255, 51, 102, 0.1); 
+            box-shadow: inset 0 0 15px rgba(255, 51, 102, 0.2);
+        }
 
     </style>
 </head>
@@ -167,7 +262,7 @@
         <h1>[ Bio-Data Pet Scanner ]</h1>
         
         <div class="scanner-window">
-            <span id="standby-text">SYSTEM STANDBY... AWAITING BIO-INPUT</span>
+            <span id="standby-text">SYSTEM STANDBY...<br>AWAITING BIO-INPUT</span>
             <img id="preview-img" alt="Subject Preview">
             <div class="scan-line" id="scan-line"></div>
         </div>
@@ -190,7 +285,6 @@
 
     <script>
         // --- CONFIGURATION ---
-        // REPLACE THIS WITH YOUR APPS SCRIPT WEB APP URL
         const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxYi4ruQ9zpJxr5U2ZsXDdg77ybsQoiT3XzB6dfRKILuuADxboZMSQCJrBC7G8y7RFjmA/exec"; 
         
         // Internal variables
@@ -216,7 +310,6 @@
         async function initSystem() {
             try {
                 logMsg("LOADING NEURAL NETWORK (MOBILENET V2)...");
-                // Load MobileNet for feature extraction
                 net = await mobilenet.load({ version: 2, alpha: 1.0 });
                 logMsg("NEURAL NET: ONLINE.");
 
@@ -250,7 +343,7 @@
             }
         });
 
-        // --- COSINE SIMILARITY MATH (To compare neural embeddings) ---
+        // --- COSINE SIMILARITY MATH ---
         function calculateSimilarity(embedding1, embedding2) {
             let dotProduct = 0;
             let normA = 0;
@@ -275,8 +368,6 @@
             logMsg("EXTRACTING SUBJECT FEATURES...");
 
             try {
-                // 1. Get embedding for the uploaded image
-                // infer() bypasses classification and returns the mathematical tensor features
                 const uploadTensor = net.infer(uploadedImageElement, true);
                 const uploadEmbedding = await uploadTensor.data();
 
@@ -285,14 +376,12 @@
 
                 logMsg("CROSS-REFERENCING DATABASE...");
 
-                // 2. Loop through DB and compare
                 for (let i = 0; i < dbRecords.length; i++) {
                     const record = dbRecords[i];
                     if (record.PetPhoto) {
                         try {
-                            // Load the DB image
                             let dbImg = new Image();
-                            dbImg.crossOrigin = "anonymous"; // Important for external images (Drive)
+                            dbImg.crossOrigin = "anonymous";
                             dbImg.src = record.PetPhoto;
                             
                             await new Promise((resolve, reject) => {
@@ -300,21 +389,17 @@
                                 dbImg.onerror = reject;
                             });
 
-                            // Extract DB image features and compare
                             const dbTensor = net.infer(dbImg, true);
                             const dbEmbedding = await dbTensor.data();
                             
                             const score = calculateSimilarity(uploadEmbedding, dbEmbedding);
                             
-                            // If it's the highest score so far, record it
                             if (score > bestMatchScore) {
                                 bestMatchScore = score;
                                 matchedPetName = record.PetName || "UNKNOWN_SUBJECT";
                             }
                             
-                            // Free memory
                             dbTensor.dispose();
-
                         } catch (imgErr) {
                             console.log(`Failed to load image for ${record.PetName}`);
                         }
@@ -325,10 +410,9 @@
                 scanLine.style.display = 'none';
                 scanBtn.disabled = false;
 
-                // 3. Evaluate Match (A score > 0.8 is generally a strong structural match)
                 if (bestMatchScore > 0.80) {
                     logMsg(`MATCH ACQUIRED: ${matchedPetName} (Confidence: ${(bestMatchScore*100).toFixed(1)}%)`);
-                    resultBox.innerHTML = `<div class="match-result vaccinated">VACCINATED <br><small>MATCH: ${matchedPetName}</small></div>`;
+                    resultBox.innerHTML = `<div class="match-result vaccinated">VACCINATED <br><small style="font-size: 0.6em; color: rgba(0, 255, 204, 0.8);">MATCH: ${matchedPetName}</small></div>`;
                 } else {
                     logMsg(`NO MATCH FOUND (Highest Confidence: ${(bestMatchScore*100).toFixed(1)}%)`);
                     resultBox.innerHTML = `<div class="match-result unidentified">UNIDENTIFIED SUBJECT</div>`;
