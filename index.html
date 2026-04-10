@@ -2,276 +2,347 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PET-ID | Neural Matcher</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bio-Data Pet Scanner</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            --neon-cyan: #00f3ff;
-            --neon-purple: #bc13fe;
-            --bg-black: #050505;
-            --glass: rgba(255, 255, 255, 0.05);
+            --bg-color: #050a0f;
+            --primary-color: #00ffcc;
+            --alert-color: #ff3366;
+            --panel-bg: rgba(0, 255, 204, 0.05);
         }
-
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body {
-            background-color: var(--bg-black);
-            color: white;
-            font-family: 'Rajdhani', sans-serif;
             margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--primary-color);
+            font-family: 'Share Tech Mono', monospace;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
-            min-height: 100dvh;
-            overflow: hidden;
-            padding: 10px;
+            justify-content: center;
+            min-height: 100vh;
+            overflow-x: hidden;
         }
 
-        /* Fixed Background Grid */
+        /* Sci-Fi Grid Background */
         body::before {
-            content: ""; position: fixed; top: -50%; left: -50%; width: 200%; height: 200%;
-            background-image: linear-gradient(rgba(0, 243, 255, 0.05) 1px, transparent 1px),
-                              linear-gradient(90deg, rgba(0, 243, 255, 0.05) 1px, transparent 1px);
-            background-size: 30px 30px; transform: perspective(500px) rotateX(60deg);
-            z-index: -1; animation: move-grid 20s linear infinite;
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: 
+                linear-gradient(rgba(0, 255, 204, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 204, 0.1) 1px, transparent 1px);
+            background-size: 30px 30px;
+            z-index: -1;
+            opacity: 0.3;
         }
-        @keyframes move-grid { 0% { transform: perspective(500px) rotateX(60deg) translateY(0); } 100% { transform: perspective(500px) rotateX(60deg) translateY(30px); } }
 
-        .container {
-            width: 100%;
-            max-width: 380px;
-            background: var(--glass);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(0, 243, 255, 0.3);
-            border-radius: 15px;
-            padding: 15px;
-            box-shadow: 0 0 30px rgba(0, 243, 255, 0.1);
+        .hud-container {
+            border: 2px solid var(--primary-color);
+            background: var(--panel-bg);
+            padding: 20px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.2), inset 0 0 20px rgba(0, 255, 204, 0.1);
+            position: relative;
         }
+
+        /* HUD Corners */
+        .hud-container::before, .hud-container::after {
+            content: ''; position: absolute; width: 20px; height: 20px; border: 3px solid var(--primary-color);
+        }
+        .hud-container::before { top: -2px; left: -2px; border-right: none; border-bottom: none; }
+        .hud-container::after { bottom: -2px; right: -2px; border-left: none; border-top: none; }
 
         h1 {
-            font-family: 'Orbitron', sans-serif;
             text-align: center;
-            letter-spacing: 3px;
-            color: var(--neon-cyan);
-            margin: 0 0 15px 0;
-            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            margin-top: 0;
+            border-bottom: 1px solid var(--primary-color);
+            padding-bottom: 10px;
         }
 
         .scanner-window {
             width: 100%;
-            aspect-ratio: 1/1;
-            border: 1px solid var(--neon-cyan);
-            border-radius: 8px;
+            height: 350px;
+            border: 1px dashed var(--primary-color);
+            margin: 20px 0;
             position: relative;
-            overflow: hidden;
-            background: #000;
             display: flex;
+            align-items: center;
             justify-content: center;
+            background: #000;
+            overflow: hidden;
+        }
+
+        #preview-img {
+            max-width: 100%;
+            max-height: 100%;
+            display: none;
+            z-index: 1;
+        }
+
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: var(--primary-color);
+            box-shadow: 0 0 15px var(--primary-color);
+            opacity: 0.7;
+            z-index: 2;
+            display: none;
+            animation: scanAnim 2s linear infinite;
+        }
+
+        @keyframes scanAnim {
+            0% { top: 0; }
+            50% { top: 100%; }
+            100% { top: 0; }
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
             align-items: center;
         }
 
-        #previewImage { width: 100%; height: 100%; object-fit: cover; display: none; }
-
-        .scan-line {
-            position: absolute; width: 100%; height: 2px;
-            background: var(--neon-cyan); box-shadow: 0 0 10px var(--neon-cyan);
-            top: 0; left: 0; z-index: 10; display: none;
-            animation: scan 1.5s linear infinite;
-        }
-        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
-
-        .btn-group { display: flex; gap: 5px; margin-top: 15px; }
-
-        .upload-btn {
-            flex: 1; padding: 12px;
-            background: transparent; border: 1px solid var(--neon-purple);
-            color: var(--neon-purple); font-family: 'Orbitron', sans-serif;
-            font-size: 0.7rem; cursor: pointer; border-radius: 4px;
-        }
-
-        #status {
-            text-align: center; margin-top: 10px;
-            font-size: 0.7rem; color: #888; letter-spacing: 1px;
+        button, .file-upload-label {
+            background: transparent;
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+            padding: 10px 20px;
+            cursor: pointer;
+            font-family: inherit;
             text-transform: uppercase;
+            font-size: 16px;
+            transition: all 0.3s;
         }
 
-        .result-panel {
-            margin-top: 15px; padding-top: 15px;
-            border-top: 1px solid rgba(255,255,255,0.1);
+        button:hover, .file-upload-label:hover {
+            background: var(--primary-color);
+            color: #000;
+            box-shadow: 0 0 15px var(--primary-color);
+        }
+
+        input[type="file"] {
             display: none;
         }
 
-        .vax-badge {
-            font-weight: 700; font-size: 0.8rem; padding: 8px;
-            text-align: center; border-radius: 4px; margin-bottom: 10px;
-            letter-spacing: 2px;
+        .status-panel {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            background: rgba(0, 0, 0, 0.5);
         }
 
-        .pos { color: #00ff88; border: 1px solid #00ff88; background: rgba(0,255,136,0.1); }
-        .neg { color: #ff3e3e; border: 1px solid #ff3e3e; background: rgba(255,62,62,0.1); }
-        .warn { color: #ffaa00; border: 1px solid #ffaa00; background: rgba(255,170,0,0.1); }
+        .log-entry { margin: 5px 0; font-size: 14px; }
+        
+        .match-result {
+            margin-top: 15px;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            text-shadow: 0 0 10px currentColor;
+        }
 
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size: 0.75rem; }
-        .label { color: var(--neon-cyan); opacity: 0.7; }
-        .val { text-align: right; font-weight: 700; }
+        .vaccinated { color: var(--primary-color); border: 2px solid var(--primary-color); padding: 10px; background: rgba(0, 255, 204, 0.1); }
+        .unidentified { color: var(--alert-color); border: 2px solid var(--alert-color); padding: 10px; background: rgba(255, 51, 102, 0.1); }
+
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>BIO-DATA SCANNER</h1>
-    
-    <div class="scanner-window">
-        <div class="scan-line" id="scanLine"></div>
-        <span id="pText" style="color:#333; font-size: 0.7rem;">AWAITING SIGNAL...</span>
-        <img id="previewImage">
-    </div>
+    <div class="hud-container">
+        <h1>[ Bio-Data Pet Scanner ]</h1>
+        
+        <div class="scanner-window">
+            <span id="standby-text">SYSTEM STANDBY... AWAITING BIO-INPUT</span>
+            <img id="preview-img" alt="Subject Preview">
+            <div class="scan-line" id="scan-line"></div>
+        </div>
 
-    <input type="file" id="fileInput" accept="image/*" style="display: none;">
-    <div class="btn-group">
-        <button class="upload-btn" onclick="document.getElementById('fileInput').click()">UPLOAD SCAN</button>
-    </div>
+        <div class="controls">
+            <label class="file-upload-label">
+                <input type="file" id="image-upload" accept="image/*">
+                [ INIT_UPLOAD ]
+            </label>
+            <button id="scan-btn" disabled>[ EXECUTE_SCAN ]</button>
+        </div>
 
-    <div id="status">INIT...</div>
-
-    <div class="result-panel" id="resultPanel">
-        <div id="vaxBadge" class="vax-badge"></div>
-        <div class="info-grid">
-            <div class="label">IDENTITY:</div><div class="val" id="petName"></div>
-            <div class="label" id="idLabel">CHIP_ID:</div><div class="val" id="chipId"></div>
-            <div class="label">CONFIDENCE:</div><div class="val" id="matchPct"></div>
+        <div class="status-panel">
+            <div id="system-logs">
+                <div class="log-entry">> SYSTEM INITIALIZING...</div>
+            </div>
+            <div id="final-result"></div>
         </div>
     </div>
-</div>
 
-<script>
-    // CONFIGURATION
-    const API_URL = "https://script.google.com/macros/s/AKfycbxYi4ruQ9zpJxr5U2ZsXDdg77ybsQoiT3XzB6dfRKILuuADxboZMSQCJrBC7G8y7RFjmA/exec"; 
-    let model, database = [];
+    <script>
+        // --- CONFIGURATION ---
+        // REPLACE THIS WITH YOUR APPS SCRIPT WEB APP URL
+        const APPS_SCRIPT_URL = "YOUR_APPS_SCRIPT_WEB_APP_URL_HERE"; 
+        
+        // Internal variables
+        let net = null;
+        let dbRecords = [];
+        let uploadedImageElement = document.getElementById('preview-img');
+        const scanBtn = document.getElementById('scan-btn');
+        const fileInput = document.getElementById('image-upload');
+        const logsBox = document.getElementById('system-logs');
+        const resultBox = document.getElementById('final-result');
+        const scanLine = document.getElementById('scan-line');
 
-    async function init() {
-        updateStatus("Loading AI...");
-        model = await mobilenet.load();
-        updateStatus("Syncing DB...");
-        try {
-            const r = await fetch(API_URL);
-            database = await r.json();
-            updateStatus("System Ready");
-        } catch(e) { updateStatus("Offline"); }
-    }
+        // Helper: Add text to the sci-fi terminal log
+        function logMsg(msg) {
+            const el = document.createElement('div');
+            el.className = 'log-entry';
+            el.innerText = `> ${msg}`;
+            logsBox.appendChild(el);
+            logsBox.scrollTop = logsBox.scrollHeight;
+        }
 
-    function updateStatus(t) { document.getElementById('status').innerText = t; }
-
-    document.getElementById('fileInput').onchange = e => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = async (ev) => {
-            const img = document.getElementById('previewImage');
-            img.src = ev.target.result;
-            img.style.display = "block";
-            document.getElementById('pText').style.display = "none";
-            document.getElementById('resultPanel').style.display = "none";
-            runComparison(img);
-        };
-        reader.readAsDataURL(file);
-    };
-
-    // Actual Biometric Comparison Logic
-    async function runComparison(uploadedImg) {
-        document.getElementById('scanLine').style.display = "block";
-        updateStatus("Neural Mapping...");
-
-        // 1. Get embedding for the uploaded image
-        const uploadActivation = model.infer(uploadedImg, true);
-
-        let bestMatch = null;
-        let highestScore = -1;
-
-        // 2. Loop through database and compare
-        for (let pet of database) {
-            if (!pet.PetPhoto || pet.PetPhoto.length < 10) continue;
-            
+        // --- SYSTEM BOOT SEQUENCE ---
+        async function initSystem() {
             try {
-                const dbImg = new Image();
-                dbImg.crossOrigin = "anonymous";
-                dbImg.src = pet.PetPhoto;
-                
-                await new Promise((res) => { dbImg.onload = res; dbImg.onerror = res; });
-                
-                if (dbImg.complete && dbImg.naturalWidth > 0) {
-                    const dbActivation = model.infer(dbImg, true);
-                    const score = similarity(uploadActivation.dataSync(), dbActivation.dataSync());
-                    
-                    if (score > highestScore) {
-                        highestScore = score;
-                        bestMatch = pet;
+                logMsg("LOADING NEURAL NETWORK (MOBILENET V2)...");
+                // Load MobileNet for feature extraction
+                net = await mobilenet.load({ version: 2, alpha: 1.0 });
+                logMsg("NEURAL NET: ONLINE.");
+
+                if (APPS_SCRIPT_URL !== "YOUR_APPS_SCRIPT_WEB_APP_URL_HERE") {
+                    logMsg("ESTABLISHING UPLINK TO REGISTRY...");
+                    const response = await fetch(APPS_SCRIPT_URL);
+                    dbRecords = await response.json();
+                    logMsg(`UPLINK SUCCESS: ${dbRecords.length} SUBJECTS FOUND.`);
+                } else {
+                    logMsg("WARNING: NO REGISTRY UPLINK PROVIDED. ENTER APPS SCRIPT URL.");
+                }
+            } catch (error) {
+                logMsg(`ERROR: ${error.message}`);
+            }
+        }
+
+        // --- IMAGE UPLOAD HANDLER ---
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    document.getElementById('standby-text').style.display = 'none';
+                    uploadedImageElement.src = event.target.result;
+                    uploadedImageElement.style.display = 'block';
+                    scanBtn.disabled = false;
+                    resultBox.innerHTML = ""; // Clear previous results
+                    logMsg("NEW BIO-DATA LOADED. READY FOR SCAN.");
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // --- COSINE SIMILARITY MATH (To compare neural embeddings) ---
+        function calculateSimilarity(embedding1, embedding2) {
+            let dotProduct = 0;
+            let normA = 0;
+            let normB = 0;
+            for (let i = 0; i < embedding1.length; i++) {
+                dotProduct += embedding1[i] * embedding2[i];
+                normA += embedding1[i] * embedding1[i];
+                normB += embedding2[i] * embedding2[i];
+            }
+            return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+        }
+
+        // --- MAIN SCAN EXECUTION ---
+        scanBtn.addEventListener('click', async () => {
+            if (!net || dbRecords.length === 0) {
+                logMsg("ABORT: SYSTEM OFFLINE OR DATABASE EMPTY.");
+                return;
+            }
+
+            scanBtn.disabled = true;
+            scanLine.style.display = 'block';
+            logMsg("EXTRACTING SUBJECT FEATURES...");
+
+            try {
+                // 1. Get embedding for the uploaded image
+                // infer() bypasses classification and returns the mathematical tensor features
+                const uploadTensor = net.infer(uploadedImageElement, true);
+                const uploadEmbedding = await uploadTensor.data();
+
+                let bestMatchScore = 0;
+                let matchedPetName = null;
+
+                logMsg("CROSS-REFERENCING DATABASE...");
+
+                // 2. Loop through DB and compare
+                for (let i = 0; i < dbRecords.length; i++) {
+                    const record = dbRecords[i];
+                    if (record.PetPhoto) {
+                        try {
+                            // Load the DB image
+                            let dbImg = new Image();
+                            dbImg.crossOrigin = "anonymous"; // Important for external images (Drive)
+                            dbImg.src = record.PetPhoto;
+                            
+                            await new Promise((resolve, reject) => {
+                                dbImg.onload = resolve;
+                                dbImg.onerror = reject;
+                            });
+
+                            // Extract DB image features and compare
+                            const dbTensor = net.infer(dbImg, true);
+                            const dbEmbedding = await dbTensor.data();
+                            
+                            const score = calculateSimilarity(uploadEmbedding, dbEmbedding);
+                            
+                            // If it's the highest score so far, record it
+                            if (score > bestMatchScore) {
+                                bestMatchScore = score;
+                                matchedPetName = record.PetName || "UNKNOWN_SUBJECT";
+                            }
+                            
+                            // Free memory
+                            dbTensor.dispose();
+
+                        } catch (imgErr) {
+                            console.log(`Failed to load image for ${record.PetName}`);
+                        }
                     }
                 }
-            } catch (err) { console.error("Skip image"); }
-        }
 
-        // 3. Output results based on match existence
-        setTimeout(() => {
-            document.getElementById('scanLine').style.display = "none";
-            if (bestMatch && highestScore > 0.5) { 
-                showVaccinatedMatch(bestMatch, highestScore);
-            } else {
-                registerForVaccination();
+                uploadTensor.dispose();
+                scanLine.style.display = 'none';
+                scanBtn.disabled = false;
+
+                // 3. Evaluate Match (A score > 0.8 is generally a strong structural match)
+                if (bestMatchScore > 0.80) {
+                    logMsg(`MATCH ACQUIRED: ${matchedPetName} (Confidence: ${(bestMatchScore*100).toFixed(1)}%)`);
+                    resultBox.innerHTML = `<div class="match-result vaccinated">VACCINATED <br><small>MATCH: ${matchedPetName}</small></div>`;
+                } else {
+                    logMsg(`NO MATCH FOUND (Highest Confidence: ${(bestMatchScore*100).toFixed(1)}%)`);
+                    resultBox.innerHTML = `<div class="match-result unidentified">UNIDENTIFIED SUBJECT</div>`;
+                }
+
+            } catch (error) {
+                logMsg(`CRITICAL ERROR: ${error.message}`);
+                scanLine.style.display = 'none';
+                scanBtn.disabled = false;
             }
-        }, 1000);
-    }
+        });
 
-    // Cosine Similarity Math
-    function similarity(a, b) {
-        let dot = 0, mA = 0, mB = 0;
-        for(let i=0; i<a.length; i++) {
-            dot += a[i] * b[i];
-            mA += a[i] * a[i];
-            mB += b[i] * b[i];
-        }
-        return dot / (Math.sqrt(mA) * Math.sqrt(mB));
-    }
-
-    // SCENARIO 1: MATCH FOUND -> VACCINATED
-    function showVaccinatedMatch(pet, score) {
-        document.getElementById('resultPanel').style.display = "block";
-        updateStatus("Match Identified in DB");
-
-        document.getElementById('petName').innerText = pet.PetName || "Unknown";
-        document.getElementById('idLabel').innerText = "CHIP_ID:";
-        document.getElementById('chipId').innerText = pet.Microchip || "N/A";
-        document.getElementById('matchPct').innerText = Math.round(score * 100) + "%";
-
-        const badge = document.getElementById('vaxBadge');
-        badge.innerText = "VACCINATED";
-        badge.className = "vax-badge pos";
-    }
-
-    // SCENARIO 2: NO MATCH -> REGISTER AS 'FOR VACCINATED' WITH NEW PUID
-    function registerForVaccination() {
-        document.getElementById('resultPanel').style.display = "block";
-        updateStatus("Unrecognized Subject");
-
-        // Generate a random 8-character alphanumeric PUID
-        const newPuid = 'PUID-' + Math.random().toString(36).substr(2, 8).toUpperCase();
-
-        document.getElementById('petName').innerText = "NEW REGISTRY";
-        document.getElementById('idLabel').innerText = "NEW PUID:";
-        document.getElementById('chipId').innerText = newPuid;
-        document.getElementById('matchPct').innerText = "NO MATCH";
-
-        const badge = document.getElementById('vaxBadge');
-        badge.innerText = "FOR VACCINATED";
-        badge.className = "vax-badge warn";
-    }
-
-    init();
-</script>
+        // Start booting when page loads
+        window.onload = initSystem;
+    </script>
 </body>
 </html>
