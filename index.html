@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PET-ID | Neural Biometric Scanner</title>
+    <title>PET-ID | Neural Matcher</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
@@ -17,10 +17,7 @@
             --glass: rgba(255, 255, 255, 0.05);
         }
 
-        * {
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body {
             background-color: var(--bg-black);
@@ -29,287 +26,235 @@
             margin: 0;
             display: flex;
             justify-content: center;
-            align-items: flex-start; /* Better for mobile scrolling */
-            min-height: 100vh;
+            align-items: center;
             min-height: 100dvh;
-            overflow-x: hidden;
-            overflow-y: auto;
-            padding: 20px 0;
+            overflow: hidden;
+            padding: 10px;
         }
 
-        /* Futuristic Background Grid - Fixed so it doesn't scroll with content */
+        /* Fixed Background Grid */
         body::before {
-            content: "";
-            position: fixed;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
+            content: ""; position: fixed; top: -50%; left: -50%; width: 200%; height: 200%;
             background-image: linear-gradient(rgba(0, 243, 255, 0.05) 1px, transparent 1px),
                               linear-gradient(90deg, rgba(0, 243, 255, 0.05) 1px, transparent 1px);
-            background-size: 50px 50px;
-            transform: perspective(500px) rotateX(60deg);
-            z-index: -1;
-            animation: move-grid 20s linear infinite;
+            background-size: 30px 30px; transform: perspective(500px) rotateX(60deg);
+            z-index: -1; animation: move-grid 20s linear infinite;
         }
-
-        @keyframes move-grid {
-            0% { transform: perspective(500px) rotateX(60deg) translateY(0); }
-            100% { transform: perspective(500px) rotateX(60deg) translateY(50px); }
-        }
+        @keyframes move-grid { 0% { transform: perspective(500px) rotateX(60deg) translateY(0); } 100% { transform: perspective(500px) rotateX(60deg) translateY(30px); } }
 
         .container {
-            width: 95%;
-            max-width: 450px;
+            width: 100%;
+            max-width: 380px; /* Slimmer for all displays */
             background: var(--glass);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
+            backdrop-filter: blur(10px);
             border: 1px solid rgba(0, 243, 255, 0.3);
-            border-radius: 20px;
-            padding: clamp(15px, 5vw, 30px);
-            box-shadow: 0 0 40px rgba(0, 243, 255, 0.1);
-            position: relative;
-            margin: auto; /* Centers in the flex body */
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.1);
         }
 
         h1 {
             font-family: 'Orbitron', sans-serif;
             text-align: center;
-            letter-spacing: clamp(2px, 1vw, 5px);
+            letter-spacing: 3px;
             color: var(--neon-cyan);
-            text-shadow: 0 0 10px var(--neon-cyan);
-            margin-bottom: 25px;
-            font-size: clamp(1.1rem, 5vw, 1.5rem);
-            margin-top: 0;
+            margin: 0 0 15px 0;
+            font-size: 1rem;
         }
 
         .scanner-window {
             width: 100%;
-            aspect-ratio: 4 / 3; /* Maintains shape across devices */
-            max-height: 300px;
-            border: 2px solid var(--neon-cyan);
-            border-radius: 10px;
+            aspect-ratio: 1/1; /* Square is better for mobile face matching */
+            border: 1px solid var(--neon-cyan);
+            border-radius: 8px;
             position: relative;
             overflow: hidden;
-            background: black;
+            background: #000;
             display: flex;
             justify-content: center;
             align-items: center;
         }
 
-        #previewImage {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: none;
-        }
+        #previewImage { width: 100%; height: 100%; object-fit: cover; display: none; }
 
         .scan-line {
-            position: absolute;
-            width: 100%;
-            height: 4px;
-            background: var(--neon-cyan);
-            box-shadow: 0 0 15px var(--neon-cyan);
-            top: 0;
-            left: 0;
-            z-index: 10;
-            display: none;
-            animation: scan 2s linear infinite;
+            position: absolute; width: 100%; height: 2px;
+            background: var(--neon-cyan); box-shadow: 0 0 10px var(--neon-cyan);
+            top: 0; left: 0; z-index: 10; display: none;
+            animation: scan 1.5s linear infinite;
         }
+        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
 
-        @keyframes scan {
-            0% { top: 0; }
-            50% { top: 100%; }
-            100% { top: 0; }
-        }
+        .btn-group { display: flex; gap: 5px; margin-top: 15px; }
 
         .upload-btn {
-            display: block;
-            width: 100%;
-            padding: 15px;
-            margin-top: 20px;
-            background: transparent;
-            border: 1px solid var(--neon-purple);
-            color: var(--neon-purple);
-            font-family: 'Orbitron', sans-serif;
-            text-transform: uppercase;
-            font-weight: 700;
-            cursor: pointer;
-            transition: 0.3s;
-            border-radius: 5px;
-            font-size: 0.9rem;
-        }
-
-        .upload-btn:hover, .upload-btn:active {
-            background: var(--neon-purple);
-            color: white;
-            box-shadow: 0 0 20px var(--neon-purple);
+            flex: 1; padding: 12px;
+            background: transparent; border: 1px solid var(--neon-purple);
+            color: var(--neon-purple); font-family: 'Orbitron', sans-serif;
+            font-size: 0.7rem; cursor: pointer; border-radius: 4px;
         }
 
         #status {
-            text-align: center;
-            margin-top: 15px;
-            font-size: 0.8rem;
-            color: #aaa;
-            letter-spacing: 1px;
-            min-height: 1.2em;
+            text-align: center; margin-top: 10px;
+            font-size: 0.7rem; color: #888; letter-spacing: 1px;
+            text-transform: uppercase;
         }
 
         .result-panel {
-            margin-top: 20px;
-            padding: 20px 10px;
+            margin-top: 15px; padding-top: 15px;
             border-top: 1px solid rgba(255,255,255,0.1);
             display: none;
-            animation: fadeIn 0.5s ease;
         }
 
-        .vax-status {
-            font-weight: bold;
-            font-size: 1.1rem;
-            padding: 12px;
-            text-align: center;
-            border-radius: 5px;
-            margin-bottom: 15px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+        .vax-badge {
+            font-weight: 700; font-size: 0.8rem; padding: 8px;
+            text-align: center; border-radius: 4px; margin-bottom: 10px;
         }
 
-        .status-positive { color: #00ff88; border: 1px solid #00ff88; box-shadow: inset 0 0 10px rgba(0, 255, 136, 0.2); }
-        .status-negative { color: #ff3e3e; border: 1px solid #ff3e3e; box-shadow: inset 0 0 10px rgba(255, 62, 62, 0.2); }
+        .pos { color: #00ff88; border: 1px solid #00ff88; background: rgba(0,255,136,0.1); }
+        .neg { color: #ff3e3e; border: 1px solid #ff3e3e; background: rgba(255,62,62,0.1); }
 
-        .data-row {
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Small screen adjustments */
-        @media (max-height: 600px) {
-            .container { margin-top: 10px; padding: 15px; }
-            h1 { margin-bottom: 15px; }
-            .scanner-window { height: 180px; }
-        }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size: 0.75rem; }
+        .label { color: var(--neon-cyan); opacity: 0.7; }
+        .val { text-align: right; font-weight: 700; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>NEURAL SCANNER</h1>
+    <h1>BIO-DATA SCANNER</h1>
     
-    <div class="scanner-window" id="window">
+    <div class="scanner-window">
         <div class="scan-line" id="scanLine"></div>
-        <span id="placeholderText" style="color: #444; font-weight: 500;">AWAITING BIO-DATA...</span>
-        <img id="previewImage" src="" alt="Pet Preview">
+        <span id="pText" style="color:#333; font-size: 0.7rem;">AWAITING SIGNAL...</span>
+        <img id="previewImage">
     </div>
 
     <input type="file" id="fileInput" accept="image/*" style="display: none;">
-    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Upload Bio-Scan</button>
+    <div class="btn-group">
+        <button class="upload-btn" onclick="document.getElementById('fileInput').click()">UPLOAD SCAN</button>
+    </div>
 
-    <div id="status">System Ready: IDLE</div>
+    <div id="status">INIT...</div>
 
     <div class="result-panel" id="resultPanel">
-        <div id="vaxBadge" class="vax-status"></div>
-        <div class="data-row">
-            <span style="font-size: 0.8rem; color: var(--neon-cyan);">MATCH FOUND:</span>
-            <span id="petName" style="color:white; font-weight: 700;"></span>
-        </div>
-        <div class="data-row">
-            <span style="font-size: 0.8rem; color: #888;">CHIP ID:</span>
-            <span id="chipId" style="color:white; font-family: monospace;"></span>
+        <div id="vaxBadge" class="vax-badge"></div>
+        <div class="info-grid">
+            <div class="label">IDENTITY:</div><div class="val" id="petName"></div>
+            <div class="label">CHIP_ID:</div><div class="val" id="chipId"></div>
+            <div class="label">CONFIDENCE:</div><div class="val" id="matchPct"></div>
         </div>
     </div>
 </div>
 
 <script>
+    // CONFIGURATION
     const API_URL = "YOUR_APPS_SCRIPT_WEB_APP_URL"; 
-    
-    let model;
-    let database = [];
+    let model, database = [];
 
     async function init() {
-        updateStatus("INITIALIZING NEURAL NETS...");
+        updateStatus("Loading AI...");
         model = await mobilenet.load();
-        
-        updateStatus("SYNCING REGISTRY DATABASE...");
+        updateStatus("Syncing DB...");
         try {
-            const response = await fetch(API_URL);
-            database = await response.json();
-            updateStatus("SYSTEM ONLINE: READY");
-        } catch (err) {
-            updateStatus("SYNC ERROR: CHECK CONNECTION");
-        }
+            const r = await fetch(API_URL);
+            database = await r.json();
+            updateStatus("System Ready");
+        } catch(e) { updateStatus("Offline"); }
     }
 
-    function updateStatus(text) {
-        document.getElementById('status').innerText = text;
-    }
+    function updateStatus(t) { document.getElementById('status').innerText = t; }
 
     document.getElementById('fileInput').onchange = e => {
         const file = e.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
-        reader.onload = async (event) => {
+        reader.onload = async (ev) => {
             const img = document.getElementById('previewImage');
-            img.src = event.target.result;
+            img.src = ev.target.result;
             img.style.display = "block";
-            document.getElementById('placeholderText').style.display = "none";
+            document.getElementById('pText').style.display = "none";
             document.getElementById('resultPanel').style.display = "none";
-            
-            runBiometricScan(img);
+            runComparison(img);
         };
         reader.readAsDataURL(file);
     };
 
-    async function runBiometricScan(imgElement) {
+    // Actual Biometric Comparison Logic
+    async function runComparison(uploadedImg) {
         document.getElementById('scanLine').style.display = "block";
-        updateStatus("ANALYZING BIO-FEATURES...");
+        updateStatus("Neural Mapping...");
 
-        setTimeout(async () => {
-            const match = database.find(pet => pet.PetPhoto && pet.PetPhoto !== "");
+        // 1. Get embedding for the uploaded image
+        const uploadActivation = model.infer(uploadedImg, true);
 
-            if (match) {
-                displayResult(match);
-            } else {
-                updateStatus("NO MATCH FOUND IN REGISTRY");
-                document.getElementById('scanLine').style.display = "none";
-            }
-        }, 2500);
-    }
+        let bestMatch = null;
+        let highestScore = -1;
 
-    function displayResult(pet) {
-        document.getElementById('scanLine').style.display = "none";
-        document.getElementById('resultPanel').style.display = "block";
-        updateStatus("SCAN COMPLETE");
-
-        const nameDisplay = document.getElementById('petName');
-        const chipDisplay = document.getElementById('chipId');
-        const vaxBadge = document.getElementById('vaxBadge');
-
-        nameDisplay.innerText = pet.PetName || "Unnamed Bio-Unit";
-        chipDisplay.innerText = pet.Microchip || "Unknown";
-
-        if (pet.ForVaccinated === "ForVaccinated") {
-            vaxBadge.innerText = "VACCINATION VERIFIED";
-            vaxBadge.className = "vax-status status-positive";
-        } else {
-            vaxBadge.innerText = "WARNING: UNVACCINATED";
-            vaxBadge.className = "vax-status status-negative";
+        // 2. Loop through database and compare
+        for (let pet of database) {
+            if (!pet.PetPhoto || pet.PetPhoto.length < 10) continue;
+            
+            try {
+                const dbImg = new Image();
+                dbImg.crossOrigin = "anonymous";
+                dbImg.src = pet.PetPhoto;
+                
+                await new Promise((res) => { dbImg.onload = res; dbImg.onerror = res; });
+                
+                if (dbImg.complete && dbImg.naturalWidth > 0) {
+                    const dbActivation = model.infer(dbImg, true);
+                    const score = similarity(uploadActivation.dataSync(), dbActivation.dataSync());
+                    
+                    if (score > highestScore) {
+                        highestScore = score;
+                        bestMatch = pet;
+                    }
+                }
+            } catch (err) { console.error("Skip image"); }
         }
 
-        // Auto-scroll to result on small screens
-        window.scrollTo({
-            top: document.body.scrollHeight,
-            behavior: 'smooth'
-        });
+        // 3. Output results
+        setTimeout(() => {
+            document.getElementById('scanLine').style.display = "none";
+            if (bestMatch && highestScore > 0.5) { // Match threshold
+                showResult(bestMatch, highestScore);
+            } else {
+                updateStatus("No Record Found");
+            }
+        }, 1000);
+    }
+
+    // Cosine Similarity Math
+    function similarity(a, b) {
+        let dot = 0, mA = 0, mB = 0;
+        for(let i=0; i<a.length; i++) {
+            dot += a[i] * b[i];
+            mA += a[i] * a[i];
+            mB += b[i] * b[i];
+        }
+        return dot / (Math.sqrt(mA) * Math.sqrt(mB));
+    }
+
+    function showResult(pet, score) {
+        document.getElementById('resultPanel').style.display = "block";
+        updateStatus("Match Identified");
+
+        document.getElementById('petName').innerText = pet.PetName || "N/A";
+        document.getElementById('chipId').innerText = pet.Microchip || "N/A";
+        document.getElementById('matchPct').innerText = Math.round(score * 100) + "%";
+
+        const badge = document.getElementById('vaxBadge');
+        if (pet.ForVaccinated === "ForVaccinated") {
+            badge.innerText = "VERIFIED VACCINATED";
+            badge.className = "vax-badge pos";
+        } else {
+            badge.innerText = "VACCINATION REQUIRED";
+            badge.className = "vax-badge neg";
+        }
     }
 
     init();
 </script>
-
 </body>
 </html>
