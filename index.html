@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>PET-ID | Neural Biometric Scanner</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
@@ -17,6 +17,11 @@
             --glass: rgba(255, 255, 255, 0.05);
         }
 
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
         body {
             background-color: var(--bg-black);
             color: white;
@@ -24,15 +29,20 @@
             margin: 0;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start; /* Better for mobile scrolling */
             min-height: 100vh;
-            overflow: hidden;
+            min-height: 100dvh;
+            overflow-x: hidden;
+            overflow-y: auto;
+            padding: 20px 0;
         }
 
-        /* Futuristic Background Grid */
+        /* Futuristic Background Grid - Fixed so it doesn't scroll with content */
         body::before {
             content: "";
-            position: absolute;
+            position: fixed;
+            top: -50%;
+            left: -50%;
             width: 200%;
             height: 200%;
             background-image: linear-gradient(rgba(0, 243, 255, 0.05) 1px, transparent 1px),
@@ -49,30 +59,34 @@
         }
 
         .container {
-            width: 90%;
+            width: 95%;
             max-width: 450px;
             background: var(--glass);
             backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
             border: 1px solid rgba(0, 243, 255, 0.3);
             border-radius: 20px;
-            padding: 30px;
+            padding: clamp(15px, 5vw, 30px);
             box-shadow: 0 0 40px rgba(0, 243, 255, 0.1);
             position: relative;
+            margin: auto; /* Centers in the flex body */
         }
 
         h1 {
             font-family: 'Orbitron', sans-serif;
             text-align: center;
-            letter-spacing: 5px;
+            letter-spacing: clamp(2px, 1vw, 5px);
             color: var(--neon-cyan);
             text-shadow: 0 0 10px var(--neon-cyan);
-            margin-bottom: 30px;
-            font-size: 1.5rem;
+            margin-bottom: 25px;
+            font-size: clamp(1.1rem, 5vw, 1.5rem);
+            margin-top: 0;
         }
 
         .scanner-window {
             width: 100%;
-            height: 250px;
+            aspect-ratio: 4 / 3; /* Maintains shape across devices */
+            max-height: 300px;
             border: 2px solid var(--neon-cyan);
             border-radius: 10px;
             position: relative;
@@ -90,7 +104,6 @@
             display: none;
         }
 
-        /* The Animated Scan Line */
         .scan-line {
             position: absolute;
             width: 100%;
@@ -120,12 +133,14 @@
             color: var(--neon-purple);
             font-family: 'Orbitron', sans-serif;
             text-transform: uppercase;
+            font-weight: 700;
             cursor: pointer;
             transition: 0.3s;
             border-radius: 5px;
+            font-size: 0.9rem;
         }
 
-        .upload-btn:hover {
+        .upload-btn:hover, .upload-btn:active {
             background: var(--neon-purple);
             color: white;
             box-shadow: 0 0 20px var(--neon-purple);
@@ -137,11 +152,12 @@
             font-size: 0.8rem;
             color: #aaa;
             letter-spacing: 1px;
+            min-height: 1.2em;
         }
 
         .result-panel {
-            margin-top: 25px;
-            padding: 20px;
+            margin-top: 20px;
+            padding: 20px 10px;
             border-top: 1px solid rgba(255,255,255,0.1);
             display: none;
             animation: fadeIn 0.5s ease;
@@ -149,17 +165,34 @@
 
         .vax-status {
             font-weight: bold;
-            font-size: 1.2rem;
-            padding: 10px;
+            font-size: 1.1rem;
+            padding: 12px;
             text-align: center;
             border-radius: 5px;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
-        .status-positive { color: #00ff88; border: 1px solid #00ff88; box-shadow: inset 0 0 10px #00ff88; }
-        .status-negative { color: #ff3e3e; border: 1px solid #ff3e3e; }
+        .status-positive { color: #00ff88; border: 1px solid #00ff88; box-shadow: inset 0 0 10px rgba(0, 255, 136, 0.2); }
+        .status-negative { color: #ff3e3e; border: 1px solid #ff3e3e; box-shadow: inset 0 0 10px rgba(255, 62, 62, 0.2); }
 
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .data-row {
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Small screen adjustments */
+        @media (max-height: 600px) {
+            .container { margin-top: 10px; padding: 15px; }
+            h1 { margin-bottom: 15px; }
+            .scanner-window { height: 180px; }
+        }
     </style>
 </head>
 <body>
@@ -169,7 +202,7 @@
     
     <div class="scanner-window" id="window">
         <div class="scan-line" id="scanLine"></div>
-        <span id="placeholderText" style="color: #444;">AWAITING BIO-DATA...</span>
+        <span id="placeholderText" style="color: #444; font-weight: 500;">AWAITING BIO-DATA...</span>
         <img id="previewImage" src="" alt="Pet Preview">
     </div>
 
@@ -180,19 +213,23 @@
 
     <div class="result-panel" id="resultPanel">
         <div id="vaxBadge" class="vax-status"></div>
-        <div style="font-size: 0.9rem; color: var(--neon-cyan);">MATCH FOUND: <span id="petName" style="color:white;"></span></div>
-        <div style="font-size: 0.8rem; color: #888;">CHIP ID: <span id="chipId" style="color:white;"></span></div>
+        <div class="data-row">
+            <span style="font-size: 0.8rem; color: var(--neon-cyan);">MATCH FOUND:</span>
+            <span id="petName" style="color:white; font-weight: 700;"></span>
+        </div>
+        <div class="data-row">
+            <span style="font-size: 0.8rem; color: #888;">CHIP ID:</span>
+            <span id="chipId" style="color:white; font-family: monospace;"></span>
+        </div>
     </div>
 </div>
 
 <script>
-    // 1. YOUR CONFIGURATION
     const API_URL = "YOUR_APPS_SCRIPT_WEB_APP_URL"; 
     
     let model;
     let database = [];
 
-    // Load AI Model and fetch Registry Data
     async function init() {
         updateStatus("INITIALIZING NEURAL NETS...");
         model = await mobilenet.load();
@@ -211,7 +248,6 @@
         document.getElementById('status').innerText = text;
     }
 
-    // Handle Image Upload
     document.getElementById('fileInput').onchange = e => {
         const file = e.target.files[0];
         if (!file) return;
@@ -233,12 +269,7 @@
         document.getElementById('scanLine').style.display = "block";
         updateStatus("ANALYZING BIO-FEATURES...");
 
-        // Simulate Neural Network latency for "Futuristic" effect
         setTimeout(async () => {
-            // In a production environment with thousands of pets, you would compare 
-            // the 'embeddings' (feature vectors) from the AI. 
-            // For this version, we find a match based on the existence of data.
-            
             const match = database.find(pet => pet.PetPhoto && pet.PetPhoto !== "");
 
             if (match) {
@@ -262,7 +293,6 @@
         nameDisplay.innerText = pet.PetName || "Unnamed Bio-Unit";
         chipDisplay.innerText = pet.Microchip || "Unknown";
 
-        // Logic check: If 'ForVaccinated' column in your sheet has data
         if (pet.ForVaccinated === "ForVaccinated") {
             vaxBadge.innerText = "VACCINATION VERIFIED";
             vaxBadge.className = "vax-status status-positive";
@@ -270,6 +300,12 @@
             vaxBadge.innerText = "WARNING: UNVACCINATED";
             vaxBadge.className = "vax-status status-negative";
         }
+
+        // Auto-scroll to result on small screens
+        window.scrollTo({
+            top: document.body.scrollHeight,
+            behavior: 'smooth'
+        });
     }
 
     init();
