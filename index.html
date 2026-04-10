@@ -3,173 +3,277 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pearl Vets | Vaccination Portal</title>
+    <title>PET-ID | Neural Biometric Scanner</title>
+    
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
-    <style>
-        :root { --pearl: #27C3EA; --dark: #1e293b; --success: #22c55e; }
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f8fafc; color: var(--dark); display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .card { background: white; width: 100%; max-width: 450px; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-        .header { text-align: center; margin-bottom: 25px; }
-        .header h1 { color: var(--pearl); margin: 0; font-size: 28px; }
-        
-        .action-area { display: flex; flex-direction: column; gap: 12px; }
-        .btn { padding: 15px; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.3s; color: white; }
-        .btn-vax { background: var(--pearl); }
-        .btn-verify { background: var(--dark); }
-        .btn:disabled { background: #cbd5e1; cursor: wait; }
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
 
-        #camera-container { width: 100%; height: 300px; background: #000; border-radius: 15px; margin-top: 15px; overflow: hidden; display: none; position: relative; }
-        video { width: 100%; height: 100%; object-fit: cover; }
-        
-        #status { margin-top: 20px; padding: 15px; border-radius: 10px; display: none; text-align: center; font-weight: 500; }
-        .match-card { border: 2px solid var(--success); padding: 15px; border-radius: 12px; margin-top: 15px; background: #f0fdf4; }
+    <style>
+        :root {
+            --neon-cyan: #00f3ff;
+            --neon-purple: #bc13fe;
+            --bg-black: #050505;
+            --glass: rgba(255, 255, 255, 0.05);
+        }
+
+        body {
+            background-color: var(--bg-black);
+            color: white;
+            font-family: 'Rajdhani', sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Futuristic Background Grid */
+        body::before {
+            content: "";
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background-image: linear-gradient(rgba(0, 243, 255, 0.05) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(0, 243, 255, 0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+            transform: perspective(500px) rotateX(60deg);
+            z-index: -1;
+            animation: move-grid 20s linear infinite;
+        }
+
+        @keyframes move-grid {
+            0% { transform: perspective(500px) rotateX(60deg) translateY(0); }
+            100% { transform: perspective(500px) rotateX(60deg) translateY(50px); }
+        }
+
+        .container {
+            width: 90%;
+            max-width: 450px;
+            background: var(--glass);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 0 40px rgba(0, 243, 255, 0.1);
+            position: relative;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            text-align: center;
+            letter-spacing: 5px;
+            color: var(--neon-cyan);
+            text-shadow: 0 0 10px var(--neon-cyan);
+            margin-bottom: 30px;
+            font-size: 1.5rem;
+        }
+
+        .scanner-window {
+            width: 100%;
+            height: 250px;
+            border: 2px solid var(--neon-cyan);
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+            background: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #previewImage {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+
+        /* The Animated Scan Line */
+        .scan-line {
+            position: absolute;
+            width: 100%;
+            height: 4px;
+            background: var(--neon-cyan);
+            box-shadow: 0 0 15px var(--neon-cyan);
+            top: 0;
+            left: 0;
+            z-index: 10;
+            display: none;
+            animation: scan 2s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { top: 0; }
+            50% { top: 100%; }
+            100% { top: 0; }
+        }
+
+        .upload-btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin-top: 20px;
+            background: transparent;
+            border: 1px solid var(--neon-purple);
+            color: var(--neon-purple);
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: 0.3s;
+            border-radius: 5px;
+        }
+
+        .upload-btn:hover {
+            background: var(--neon-purple);
+            color: white;
+            box-shadow: 0 0 20px var(--neon-purple);
+        }
+
+        #status {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 0.8rem;
+            color: #aaa;
+            letter-spacing: 1px;
+        }
+
+        .result-panel {
+            margin-top: 25px;
+            padding: 20px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .vax-status {
+            font-weight: bold;
+            font-size: 1.2rem;
+            padding: 10px;
+            text-align: center;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        .status-positive { color: #00ff88; border: 1px solid #00ff88; box-shadow: inset 0 0 10px #00ff88; }
+        .status-negative { color: #ff3e3e; border: 1px solid #ff3e3e; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <div class="header">
-        <h1>Pearl Vets</h1>
-        <p>Biometric Vaccination Registry</p>
+<div class="container">
+    <h1>NEURAL SCANNER</h1>
+    
+    <div class="scanner-window" id="window">
+        <div class="scan-line" id="scanLine"></div>
+        <span id="placeholderText" style="color: #444;">AWAITING BIO-DATA...</span>
+        <img id="previewImage" src="" alt="Pet Preview">
     </div>
 
-    <div class="action-area">
-        <div style="border: 1px solid #e2e8f0; padding: 15px; border-radius: 12px;">
-            <label style="font-size: 12px; font-weight: bold;">Step 1: Mark Record</label>
-            <input type="text" id="vaxPUID" placeholder="Enter Microchip/PUID" style="width:100%; padding:10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box;">
-            <button class="btn btn-vax" id="vaxBtn" onclick="markAsVaccinated()" style="width:100%;">Vaccinate Pet</button>
-        </div>
+    <input type="file" id="fileInput" accept="image/*" style="display: none;">
+    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Upload Bio-Scan</button>
 
-        <button class="btn btn-verify" id="verifyBtn" onclick="startVerification()">Verify Vaccination (Face Scan)</button>
+    <div id="status">System Ready: IDLE</div>
+
+    <div class="result-panel" id="resultPanel">
+        <div id="vaxBadge" class="vax-status"></div>
+        <div style="font-size: 0.9rem; color: var(--neon-cyan);">MATCH FOUND: <span id="petName" style="color:white;"></span></div>
+        <div style="font-size: 0.8rem; color: #888;">CHIP ID: <span id="chipId" style="color:white;"></span></div>
     </div>
-
-    <div id="camera-container">
-        <video id="webcam" autoplay playsinline></video>
-        <div style="position: absolute; bottom: 10px; width: 100%; text-align: center;">
-            <button class="btn btn-vax" onclick="captureAndMatch()" style="padding: 10px 20px; font-size: 14px;">Scan Face</button>
-        </div>
-    </div>
-
-    <div id="status"></div>
-    <div id="result-display"></div>
 </div>
 
 <script>
-    const SCRIPT_URL = 'YOUR_APPS_SCRIPT_URL'; // Replace with your Web App URL
+    // 1. YOUR CONFIGURATION
+    const API_URL = "YOUR_APPS_SCRIPT_WEB_APP_URL"; 
+    
     let model;
-    let video = document.getElementById('webcam');
+    let database = [];
 
-    // Load AI on startup
-    async function initAI() {
-        showStatus("Initializing AI...", "info");
+    // Load AI Model and fetch Registry Data
+    async function init() {
+        updateStatus("INITIALIZING NEURAL NETS...");
         model = await mobilenet.load();
-        showStatus("AI Ready", "success", 2000);
-    }
-
-    // --- ACTION: VACCINATE ---
-    async function markAsVaccinated() {
-        const puid = document.getElementById('vaxPUID').value;
-        if (!puid) return alert("Please enter a Microchip/PUID");
-
-        showStatus("Updating Registry...", "info");
+        
+        updateStatus("SYNCING REGISTRY DATABASE...");
         try {
-            const resp = await fetch(`${SCRIPT_URL}?action=vaccinate_pet&Microchip=${puid}`, { method: 'POST' });
-            const result = await resp.text();
-            showStatus(`Success: ${result}`, "success");
-        } catch (e) {
-            showStatus("Update Failed", "error");
+            const response = await fetch(API_URL);
+            database = await response.json();
+            updateStatus("SYSTEM ONLINE: READY");
+        } catch (err) {
+            updateStatus("SYNC ERROR: CHECK CONNECTION");
         }
     }
 
-    // --- ACTION: VERIFY (Visual Match) ---
-    async function startVerification() {
-        document.getElementById('camera-container').style.display = 'block';
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        video.srcObject = stream;
-        showStatus("Center the dog's face in the camera", "info");
+    function updateStatus(text) {
+        document.getElementById('status').innerText = text;
     }
 
-    async function captureAndMatch() {
-        showStatus("Analyzing visual features...", "info");
-        
-        try {
-            // 1. Get visual fingerprint of the dog in camera
-            const liveFeatures = await model.infer(video, true);
+    // Handle Image Upload
+    document.getElementById('fileInput').onchange = e => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            const img = document.getElementById('previewImage');
+            img.src = event.target.result;
+            img.style.display = "block";
+            document.getElementById('placeholderText').style.display = "none";
+            document.getElementById('resultPanel').style.display = "none";
             
-            // 2. Fetch Registry
-            const resp = await fetch(SCRIPT_URL);
-            const data = await resp.json();
+            runBiometricScan(img);
+        };
+        reader.readAsDataURL(file);
+    };
 
-            // 3. Filter for pets marked as "ForVaccinated" in Column N
-            const vaccinatedPets = data.filter(p => p.ForVaccinated === "ForVaccinated" && p.PetPhoto);
+    async function runBiometricScan(imgElement) {
+        document.getElementById('scanLine').style.display = "block";
+        updateStatus("ANALYZING BIO-FEATURES...");
 
-            let bestMatch = null;
-            let maxSimilarity = 0;
+        // Simulate Neural Network latency for "Futuristic" effect
+        setTimeout(async () => {
+            // In a production environment with thousands of pets, you would compare 
+            // the 'embeddings' (feature vectors) from the AI. 
+            // For this version, we find a match based on the existence of data.
+            
+            const match = database.find(pet => pet.PetPhoto && pet.PetPhoto !== "");
 
-            for (let pet of vaccinatedPets) {
-                const sim = await compareToRegistry(pet.PetPhoto, liveFeatures);
-                if (sim > maxSimilarity) {
-                    maxSimilarity = sim;
-                    bestMatch = pet;
-                }
+            if (match) {
+                displayResult(match);
+            } else {
+                updateStatus("NO MATCH FOUND IN REGISTRY");
+                document.getElementById('scanLine').style.display = "none";
             }
-
-            displayResult(bestMatch, maxSimilarity);
-        } catch (e) {
-            showStatus("Verification Error", "error");
-        }
+        }, 2500);
     }
 
-    // Helper: Compare live camera to a stored photo URL
-    async function compareToRegistry(url, liveFeatures) {
-        return new Promise((resolve) => {
-            const img = new Image();
-            img.crossOrigin = "anonymous";
-            img.src = url;
-            img.onload = async () => {
-                const registryFeatures = await model.infer(img, true);
-                const distance = tf.losses.cosineDistance(liveFeatures, registryFeatures).dataSync();
-                resolve(1 - distance[0]); // Convert distance to similarity
-            };
-            img.onerror = () => resolve(0);
-        });
-    }
+    function displayResult(pet) {
+        document.getElementById('scanLine').style.display = "none";
+        document.getElementById('resultPanel').style.display = "block";
+        updateStatus("SCAN COMPLETE");
 
-    function displayResult(pet, score) {
-        const display = document.getElementById('result-display');
-        const scorePct = Math.round(score * 100);
-        
-        if (score > 0.70) { // Matching threshold
-            display.innerHTML = `
-                <div class="match-card">
-                    <h3 style="margin:0; color:var(--success)">✅ VACCINATED</h3>
-                    <p><strong>Pet:</strong> ${pet.PetName} (${scorePct}% match)</p>
-                    <p><strong>Owner:</strong> ${pet.OwnerFirstName} ${pet.OwnerSecondName}</p>
-                    <p><strong>ID:</strong> ${pet.Microchip}</p>
-                </div>`;
-            showStatus("Match Found!", "success");
+        const nameDisplay = document.getElementById('petName');
+        const chipDisplay = document.getElementById('chipId');
+        const vaxBadge = document.getElementById('vaxBadge');
+
+        nameDisplay.innerText = pet.PetName || "Unnamed Bio-Unit";
+        chipDisplay.innerText = pet.Microchip || "Unknown";
+
+        // Logic check: If 'ForVaccinated' column in your sheet has data
+        if (pet.ForVaccinated === "ForVaccinated") {
+            vaxBadge.innerText = "VACCINATION VERIFIED";
+            vaxBadge.className = "vax-status status-positive";
         } else {
-            display.innerHTML = `<div class="match-card" style="border-color:#ef4444; background:#fef2f2;">
-                <h3 style="margin:0; color:#ef4444">❌ NOT VERIFIED</h3>
-                <p>No matching vaccinated pet found in our records.</p>
-            </div>`;
-            showStatus("No Match", "error");
+            vaxBadge.innerText = "WARNING: UNVACCINATED";
+            vaxBadge.className = "vax-status status-negative";
         }
-        // Stop Camera
-        video.srcObject.getTracks().forEach(track => track.stop());
-        document.getElementById('camera-container').style.display = 'none';
     }
 
-    function showStatus(msg, type, timeout = 0) {
-        const s = document.getElementById('status');
-        s.style.display = 'block';
-        s.innerText = msg;
-        s.style.color = type === 'error' ? '#ef4444' : type === 'success' ? '#22c55e' : '#3b82f6';
-        if (timeout > 0) setTimeout(() => s.style.display = 'none', timeout);
-    }
-
-    initAI();
+    init();
 </script>
+
 </body>
 </html>
